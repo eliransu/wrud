@@ -43,7 +43,7 @@ export interface SummarizeOptions {
 }
 
 export interface WrudClientOptions {
-  baseUrl?: string; // default http://localhost:8787
+  baseUrl?: string; // default http://localhost:11190
   apiKey: string;
   fetch?: FetchLike; // injectable for tests
   flushAt?: number; // buffer threshold (default 50)
@@ -51,7 +51,7 @@ export interface WrudClientOptions {
 }
 
 export function createWrudClient(opts: WrudClientOptions) {
-  const baseUrl = (opts.baseUrl ?? "http://localhost:8787").replace(/\/$/, "");
+  const baseUrl = (opts.baseUrl ?? "http://localhost:11190").replace(/\/$/, "");
   const doFetch: FetchLike = opts.fetch ?? ((u, i) => fetch(u, i));
   const headers = {
     authorization: `Bearer ${opts.apiKey}`,

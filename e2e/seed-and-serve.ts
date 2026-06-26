@@ -91,7 +91,7 @@ const app = buildApp({
   storage,
   summarizer,
   rateLimiter: new MemoryRateLimiter({ limit: 100000, windowMs: 60000 }),
-  corsOrigins: ["http://localhost:5173"],
+  corsOrigins: ["http://localhost:11191"],
 });
 serve({ fetch: app.fetch, port: Number(process.env.WRUD_PORT ?? 8790) }, (i) =>
   console.log("e2e server on", i.port),

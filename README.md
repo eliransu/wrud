@@ -52,15 +52,15 @@ npx @wrud/cli
 ```
 
 That's it - no clone, no token, no cloud account. It starts the API **and** dashboard on one
-port (`http://localhost:8787`), seeds a local API key, opens your browser, and prints the
+port (`http://localhost:11190`), seeds a local API key, opens your browser, and prints the
 token to paste on the **Connect** screen:
 
 ```
   +------------------------------------------------------------------+
   |  wrud is running                                                   |
   +------------------------------------------------------------------+
-   Open      : http://localhost:8787   (opening in your browser)
-   API docs  : http://localhost:8787/docs        -   DB: ~/.wrud/wrud.db
+   Open      : http://localhost:11190   (opening in your browser)
+   API docs  : http://localhost:11190/docs        -   DB: ~/.wrud/wrud.db
 
    Paste this token on the Connect screen:
 
@@ -85,7 +85,7 @@ Set up wrud for me - a local-first recorder for AI-agent sessions.
 
 1. Run `npx @wrud/cli` in the BACKGROUND (it's a long-running server - don't block on it).
 2. Read its output. When you see the "wrud is running" banner, tell me the `wrud_sk_local_...`
-   token it printed and confirm http://localhost:8787 is reachable (GET /health -> {"ok":true}).
+   token it printed and confirm http://localhost:11190 is reachable (GET /health -> {"ok":true}).
    It opens the dashboard in my browser automatically; if it didn't, give me the URL.
 3. Tell me to paste that token on the dashboard's Connect screen - then I can see my sessions,
    model usage, cost signals, and insights.
@@ -109,7 +109,7 @@ Then make my sessions record automatically:
 
 ## What you get in the dashboard
 
-Open `http://localhost:8787`, paste your token on **Connect**, and you have:
+Open `http://localhost:11190`, paste your token on **Connect**, and you have:
 
 | Section      | What it shows                                                                         |
 | ------------ | ------------------------------------------------------------------------------------- |
@@ -177,7 +177,7 @@ Full reference: [`packages/sdk/README.md`](packages/sdk/README.md).
 import { createWrudClient } from "@wrud/sdk";
 
 const client = createWrudClient({
-  baseUrl: "http://localhost:8787",
+  baseUrl: "http://localhost:11190",
   apiKey: process.env.WRUD_API_KEY!,
 });
 
@@ -219,7 +219,7 @@ const summary = await session.summarize(); // flushes buffered events, returns t
 
 Auth: `Authorization: Bearer <key>` or `x-api-key: <key>`. Keys are stored only as SHA-256
 hashes; the plaintext is shown once at creation. Browse the live spec at
-`http://localhost:8787/docs`.
+`http://localhost:11190/docs`.
 
 ---
 
@@ -244,7 +244,7 @@ Design + plan live in [`docs/design.md`](docs/design.md) and
 
 ```bash
 git clone https://github.com/eliransu/wrud.git && cd wrud && npm install
-npm run wrud                  # dev launcher: API :8787 + Vite dashboard :5173 (hot reload)
+npm run wrud                  # dev launcher: API :11190 + Vite dashboard :11191 (hot reload)
 npm -w packages/cli run build # build the publishable CLI -> packages/cli/dist (cli.mjs + web/)
 ```
 
@@ -260,8 +260,8 @@ Or run the pieces individually:
 
 ```bash
 WRUD_DB=./wrud.db npm run seed:key                                # bootstrap admin key (shown once)
-WRUD_DB=./wrud.db npm run serve                                   # API on :8787
-VITE_WRUD_API=http://localhost:8787 npm -w @wrud/platform run dev # dashboard on :5173
+WRUD_DB=./wrud.db npm run serve                                   # API on :11190
+VITE_WRUD_API=http://localhost:11190 npm -w @wrud/platform run dev # dashboard on :11191
 ```
 
 ### Server env vars
@@ -269,11 +269,11 @@ VITE_WRUD_API=http://localhost:8787 npm -w @wrud/platform run dev # dashboard on
 | var                   | default                                       | meaning                                                             |
 | --------------------- | --------------------------------------------- | ------------------------------------------------------------------- |
 | `WRUD_DB`             | `./wrud.db`                                   | SQLite file path (`:memory:` for ephemeral)                         |
-| `WRUD_PORT`           | `8787`                                        | HTTP port                                                           |
+| `WRUD_PORT`           | `11190`                                        | HTTP port                                                           |
 | `WRUD_RATE_LIMIT`     | `120`                                         | requests per window per key                                         |
 | `WRUD_RATE_WINDOW_MS` | `60000`                                       | rate-limit window                                                   |
 | `WRUD_ANTHROPIC_KEY`  | _(unset)_                                     | when set, adds an LLM narrative to summaries (Haiku); safe fallback |
-| `WRUD_CORS_ORIGIN`    | `http://localhost:5173,http://localhost:4173` | comma-separated browser origins allowed for the platform            |
+| `WRUD_CORS_ORIGIN`    | `http://localhost:11191,http://localhost:11192` | comma-separated browser origins allowed for the platform            |
 
 `npx @wrud/cli` overrides: `WRUD_PORT`, `WRUD_DB` (default `~/.wrud/wrud.db`),
 `WRUD_TOKEN_FILE` (default `~/.wrud/token`). The dev launcher (`npm run wrud`) also takes

@@ -2,7 +2,7 @@
  * Local Node entry. Constructs the real adapters (local SQLite, in-process rate limiter)
  * and serves the same buildApp() Hono app via @hono/node-server. No cloud dependency.
  *
- * Env: WRUD_DB (default ./wrud.db), WRUD_PORT (default 8787),
+ * Env: WRUD_DB (default ./wrud.db), WRUD_PORT (default 11190),
  *      WRUD_RATE_LIMIT (default 120), WRUD_RATE_WINDOW_MS (default 60000).
  */
 import { serve } from "@hono/node-server";
@@ -27,7 +27,7 @@ function posIntEnv(name: string, fallback: number): number {
 }
 
 const dbPath = process.env.WRUD_DB ?? "./wrud.db";
-const port = posIntEnv("WRUD_PORT", 8787);
+const port = posIntEnv("WRUD_PORT", 11190);
 
 // Insights are always on; LLM narrative is opt-in via WRUD_ANTHROPIC_KEY.
 const anthropicKey = process.env.WRUD_ANTHROPIC_KEY;
@@ -43,7 +43,8 @@ if (!process.env.WRUD_CORS_ORIGIN) {
   );
 }
 const corsOrigins = (
-  process.env.WRUD_CORS_ORIGIN ?? "http://localhost:5173,http://localhost:4173"
+  process.env.WRUD_CORS_ORIGIN ??
+  "http://localhost:11191,http://localhost:11192"
 )
   .split(",")
   .map((s) => s.trim())

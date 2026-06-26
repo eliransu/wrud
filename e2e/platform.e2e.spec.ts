@@ -1,13 +1,13 @@
 /**
  * Browser e2e for the Ant Design platform (Phase 3). Drives the real UI against the live
  * API: connect with a key, see the seeded session + its insight, create an API key, and
- * view the generated lesson. The platform runs on :5173 (absolute URLs here; the request
+ * view the generated lesson. The platform runs on :11191 (absolute URLs here; the request
  * fixture's baseURL points at the API).
  */
 import { test, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
-const PLATFORM = "http://localhost:5173";
+const PLATFORM = "http://localhost:11191";
 const ADMIN_KEY = readFileSync(".tmp-e2e/key.txt", "utf8").trim();
 
 async function connect(page: Page) {

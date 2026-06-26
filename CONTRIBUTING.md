@@ -31,7 +31,7 @@ The dev launcher reads `.env` from the repo root if present. Useful overrides:
 
 ```
 WRUD_DB=./wrud-dev.db
-WRUD_PORT=8787
+WRUD_PORT=11190
 WRUD_ANTHROPIC_KEY=sk-...
 ```
 

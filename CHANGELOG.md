@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] - 2026-06-26
+
+### Added
+
+- **`wrud cleanup`** (alias `uninstall`) - removes everything wrud installed and undoes `install-hooks`: the local data dir (`~/.wrud`: db, admin + ingest tokens, `hooks.log`), the temp session buffers, and wrud's hook entries from every supported agent's settings (user + project scope). Shared config is edited surgically - only wrud's own hooks are stripped, and an install-created file that empties is deleted. `--dry-run` previews the plan; confirms before deleting unless `--yes`.
+
+### Changed
+
+- **Default ports moved off the common `8787`/`5173`.** The API/server now defaults to `11190` (was `8787`) and the dev dashboard to `11191` (was `5173`; Vite preview `11192`). Override with `WRUD_PORT` / `WRUD_WEB_PORT`. In production (`npx @wrud/cli`) the dashboard is still served same-origin on the API port.
+
+---
+
 ## [0.3.0] - 2026-06-26
 
 ### Added

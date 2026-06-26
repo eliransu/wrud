@@ -9,7 +9,7 @@ const BASE: string =
   RAW != null
     ? RAW
     : (import.meta as any).env?.DEV
-      ? "http://localhost:8787"
+      ? "http://localhost:11190"
       : "";
 
 const apiKey = () => localStorage.getItem("wrud_key") ?? "";

@@ -50,7 +50,7 @@ npm install @wrud/sdk
 import { createWrudClient } from "@wrud/sdk";
 
 const client = createWrudClient({
-  baseUrl: "http://localhost:8787", // default
+  baseUrl: "http://localhost:11190", // default
   apiKey: process.env.WRUD_API_KEY!, // an `ingest`-scoped key
 });
 
@@ -78,7 +78,7 @@ flushed in batches (on a threshold or on `summarize()`).
 
 | option    | default                 | meaning                                      |
 | --------- | ----------------------- | -------------------------------------------- |
-| `baseUrl` | `http://localhost:8787` | wrud server URL                              |
+| `baseUrl` | `http://localhost:11190` | wrud server URL                              |
 | `apiKey`  | _(required)_            | API key sent as `Authorization: Bearer ...`    |
 | `fetch`   | global `fetch`          | inject a custom fetch (used in tests)        |
 | `flushAt` | `50`                    | buffer size that triggers an automatic flush |

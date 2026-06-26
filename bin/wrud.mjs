@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * `wrud` - one-command local launcher.
- * Seeds a local API key, starts the API (:8787) + the Ant Design dashboard (:5173),
+ * Seeds a local API key, starts the API (:11190) + the Ant Design dashboard (:11191),
  * opens the dashboard in your browser, and prints your local token to paste on the
  * Connect screen. Ctrl+C stops everything. Pure Node (no TS imports) so `npx wrud` works.
  */
@@ -14,8 +14,8 @@ import { fileURLToPath } from "node:url";
 // so `wrud` works the same whether it's run via `npm run wrud` or as a global binary.
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const DB = process.env.WRUD_DB || join(ROOT, "wrud.db");
-const API_PORT = process.env.WRUD_PORT || "8787";
-const WEB_PORT = process.env.WRUD_WEB_PORT || "5173";
+const API_PORT = process.env.WRUD_PORT || "11190";
+const WEB_PORT = process.env.WRUD_WEB_PORT || "11191";
 const env = { ...process.env, WRUD_DB: DB, WRUD_PORT: API_PORT };
 const sh = { shell: true };
 

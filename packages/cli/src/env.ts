@@ -16,7 +16,7 @@ import { join } from "node:path";
 
 export const HOME = join(homedir(), ".wrud");
 export const DB = process.env.WRUD_DB || join(HOME, "wrud.db");
-export const PORT = Number(process.env.WRUD_PORT || 8787);
+export const PORT = Number(process.env.WRUD_PORT || 11190);
 export const BASE = (
   process.env.WRUD_BASE_URL || `http://localhost:${PORT}`
 ).replace(/\/$/, "");
