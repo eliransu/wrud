@@ -1,6 +1,6 @@
 {
   "name": "@wrud/cli",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Run wrud locally with one command - a local-first recorder for AI-agent sessions (tools, models, cost, insights). `npx @wrud/cli`.",
   "license": "MIT",
   "type": "module",

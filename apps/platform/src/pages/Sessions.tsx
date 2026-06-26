@@ -33,7 +33,7 @@ export default function Sessions() {
                   className="wd-mono"
                   style={{ color: "var(--signal)" }}
                 >
-                  {id.slice(0, 8)}…
+                  {id.slice(0, 8)}...
                 </Link>
               ),
             },
@@ -83,7 +83,7 @@ export default function Sessions() {
               render: (_: unknown, r: any) => {
                 const models: string[] = r.models ?? [];
                 if (models.length === 0)
-                  return <span style={{ color: "var(--muted)" }}>—</span>;
+                  return <span style={{ color: "var(--muted)" }}>-</span>;
                 return (
                   <span
                     style={{ display: "inline-flex", gap: 6, flexWrap: "wrap" }}

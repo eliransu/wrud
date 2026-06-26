@@ -10,11 +10,13 @@ import {
   type Clock,
   type Session,
   type SessionSummary,
+  type Event,
 } from "@wrud/shared";
 
 export type Narrator = (ctx: {
   session: Session;
   summary: SessionSummary;
+  events: Event[];
 }) => Promise<string>;
 
 export interface SummarizerOptions {
@@ -40,7 +42,7 @@ export function buildSummarizer(opts: SummarizerOptions = {}): Summarizer {
       let narrative: string | null = base.narrative;
       if (opts.narrator) {
         try {
-          const n = await opts.narrator({ session, summary: base });
+          const n = await opts.narrator({ session, summary: base, events });
           if (n && n.trim()) narrative = n.trim();
         } catch {
           /* keep the deterministic narrative */

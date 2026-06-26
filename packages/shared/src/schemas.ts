@@ -71,6 +71,9 @@ export const eventSchema = z.discriminatedUnion("type", [
       inputTokens: z.number().optional(),
       outputTokens: z.number().optional(),
       task: z.string().optional(),
+      // Number of underlying assistant API calls this record aggregates (default 1). Lets one
+      // model_use event represent a whole session's usage for a model instead of one-per-message.
+      calls: z.number().int().nonnegative().optional(),
     }),
   }),
   z.object({

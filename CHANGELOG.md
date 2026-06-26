@@ -19,6 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.2] - 2026-06-26
+
+### Changed
+
+- **Summaries now describe the conversation, not the stats.** The LLM narrator is fed the actual captured dialogue (user prompts, assistant replies, tools run) instead of only event/token counts, so it summarizes what the user wanted and what the agent did.
+- **`model_use` events are aggregated per model.** `transcriptToUsage` collapses a session's per-message token records into one `model_use` event per model (summed tokens + a `calls` count), instead of one event per assistant message - so a long session no longer produces hundreds of token rows in the event log. The summary's per-model totals are unchanged.
+
+### Added
+
+- Optional `calls` field on the `model_use` event payload (number of underlying assistant API calls a record aggregates; default 1).
+
+---
+
 ## [0.1.0] - 2026-06-26
 
 Initial public release on npm as `@wrud/cli`.

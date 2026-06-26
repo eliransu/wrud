@@ -17,6 +17,7 @@ interface BufferLine {
   model?: string;
   inputTokens?: number;
   outputTokens?: number;
+  calls?: number;
   cwd?: string;
 }
 
@@ -62,6 +63,7 @@ export function bufferToEvents(lines: BufferLine[]): BufferedEvent[] {
           model: l.model,
           inputTokens: l.inputTokens,
           outputTokens: l.outputTokens,
+          calls: l.calls ?? 1,
         },
       };
     }
@@ -76,12 +78,19 @@ export function bufferToEvents(lines: BufferLine[]): BufferedEvent[] {
 }
 
 /**
- * Extract model + token usage from a Claude Code transcript - deduped by message id, cache-aware
- * (input = input + cache_creation + cache_read). One model record per unique assistant message.
+ * Extract model + token usage from a Claude Code transcript. Two passes:
+ *   1. dedup by message id, cache-aware (input = input + cache_creation + cache_read), keeping
+ *      the most-complete sighting of each assistant message (streaming logs partials first);
+ *   2. AGGREGATE per model into ONE record carrying summed tokens + a `calls` count.
+ * This collapses a long session's hundreds of per-message records into one model_use event per
+ * model (the summary already reports per-model totals), instead of bloating the event log.
  */
 export function transcriptToUsage(transcriptText: string): BufferLine[] {
   const lines = transcriptText.split("\n").filter(Boolean);
-  const byId = new Map<string, BufferLine>();
+  const byId = new Map<
+    string,
+    { model: string; input: number; output: number }
+  >();
   for (const raw of lines) {
     let e: any;
     try {
@@ -99,15 +108,26 @@ export function transcriptToUsage(transcriptText: string): BufferLine[] {
     const output = u.output_tokens || 0;
     const id = m.id || `${m.model}:${input}:${output}`;
     const prev = byId.get(id);
-    if (!prev || output >= (prev.outputTokens ?? 0)) {
-      byId.set(id, {
-        t: Date.now(),
-        kind: "model",
-        model: m.model || "unknown",
-        inputTokens: input,
-        outputTokens: output,
-      });
+    if (!prev || output >= prev.output) {
+      byId.set(id, { model: m.model || "unknown", input, output });
     }
   }
-  return [...byId.values()];
+
+  // Aggregate the deduped per-message usage into one record per model.
+  const byModel = new Map<string, BufferLine>();
+  for (const r of byId.values()) {
+    const agg = byModel.get(r.model) ?? {
+      t: Date.now(),
+      kind: "model" as const,
+      model: r.model,
+      inputTokens: 0,
+      outputTokens: 0,
+      calls: 0,
+    };
+    agg.inputTokens = (agg.inputTokens ?? 0) + r.input;
+    agg.outputTokens = (agg.outputTokens ?? 0) + r.output;
+    agg.calls = (agg.calls ?? 0) + 1;
+    byModel.set(r.model, agg);
+  }
+  return [...byModel.values()];
 }

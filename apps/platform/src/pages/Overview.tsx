@@ -171,7 +171,7 @@ export default function Overview() {
                         background: STATUS_COLOR[s.name] ?? "#8fa298",
                       }}
                     />
-                    {s.name} · {s.value}
+                    {s.name} - {s.value}
                   </span>
                 ))}
               </div>
@@ -181,10 +181,10 @@ export default function Overview() {
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <Surface title="Signals · insights by type" delay={240}>
+        <Surface title="Signals - insights by type" delay={240}>
           {insightEntries.length === 0 ? (
             <span style={{ color: "var(--muted)" }}>
-              No signals yet — summarize a session to surface insights.
+              No signals yet - summarize a session to surface insights.
             </span>
           ) : (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>

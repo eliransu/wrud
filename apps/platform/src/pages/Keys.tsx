@@ -172,7 +172,7 @@ export default function Keys() {
       </Modal>
 
       <Modal
-        title="Key created — copy it now"
+        title="Key created - copy it now"
         open={!!secret}
         footer={null}
         onCancel={() => setSecret(null)}

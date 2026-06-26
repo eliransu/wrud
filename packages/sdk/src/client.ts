@@ -185,7 +185,11 @@ class SessionHandle {
       try {
         narrative = await narrator({
           systemPrompt: SUMMARY_SYSTEM_PROMPT,
-          userPrompt: buildSummaryUserPrompt(base.stats, base.insights),
+          userPrompt: buildSummaryUserPrompt(
+            base.stats,
+            base.insights,
+            this.all,
+          ),
           stats: base.stats,
           insights: base.insights,
         });

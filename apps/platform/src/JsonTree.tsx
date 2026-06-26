@@ -1,5 +1,5 @@
 /**
- * JsonTree — a tiny, dependency-free collapsible JSON viewer that matches the wrud theme.
+ * JsonTree - a tiny, dependency-free collapsible JSON viewer that matches the wrud theme.
  * Uses native <details> for collapse (no JS state). Strings that are themselves JSON (common
  * for captured tool input/output) are parsed so they render as a tree, not an escaped blob.
  */

@@ -22,7 +22,7 @@ export default function Lessons() {
         <div className="wd-card">
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="No lessons yet — summarize a session to generate guidance."
+            description="No lessons yet - summarize a session to generate guidance."
           />
         </div>
       ) : (

@@ -45,7 +45,8 @@ export function deterministicStats(events: Event[]): SummaryStats {
           inputTokens: 0,
           outputTokens: 0,
         };
-        m.calls++;
+        // A model_use event may aggregate many underlying calls (payload.calls); default 1.
+        m.calls += e.payload.calls ?? 1;
         m.inputTokens += e.payload.inputTokens ?? 0;
         m.outputTokens += e.payload.outputTokens ?? 0;
         models.set(e.payload.model, m);
@@ -210,13 +211,67 @@ export function buildBaseSummary(
 
 /* ---------- the shared narration prompt (identical on server + client) ---------- */
 export const SUMMARY_SYSTEM_PROMPT =
-  "You are wrud, a session recorder for AI coding agents. Given structured stats and signals " +
-  "from one agent session, write a neutral, concrete 2-3 sentence summary of what the session " +
-  "did and its purpose. No preamble, no markdown, no bullet points - just the sentences.";
+  "You are wrud, a session recorder for AI coding agents. You are given the actual conversation " +
+  "of one session - the user's prompts, the agent's replies, and the tools it ran - plus summary " +
+  "stats for context. Write a neutral, concrete 2-4 sentence summary of WHAT THE USER WANTED and " +
+  "WHAT THE AGENT ACTUALLY DID AND ACCOMPLISHED. Summarize the substance of the work, not the " +
+  "metrics (do not just restate event/token counts). No preamble, no markdown, no bullet points - " +
+  "just the sentences.";
+
+const clipLine = (s: string, n: number): string =>
+  s.length > n ? s.slice(0, n) + "..." : s;
+
+/**
+ * A chronological digest of the actual conversation built from captured events - user/assistant
+ * messages (the dialogue) plus the tools that ran. This is what lets the narrator summarize the
+ * real work instead of the stats. Kept within a char budget: when a session is long we keep the
+ * head (intent) and tail (outcome) and elide the middle.
+ */
+function conversationDigest(events: Event[], budget = 8000): string {
+  const lines: string[] = [];
+  for (const e of events) {
+    if (
+      e.type === "message" &&
+      typeof e.payload.text === "string" &&
+      e.payload.text.trim()
+    ) {
+      const role =
+        e.payload.role === "assistant"
+          ? "ASSISTANT"
+          : e.payload.role === "system"
+            ? "SYSTEM"
+            : "USER";
+      lines.push(`${role}: ${clipLine(e.payload.text.trim(), 600)}`);
+    } else if (e.type === "tool_call") {
+      const name = String(e.payload.name ?? "tool");
+      const input =
+        typeof e.payload.input === "string"
+          ? e.payload.input
+          : JSON.stringify(e.payload.input ?? "");
+      lines.push(
+        input && input !== "{}" && input !== '""'
+          ? `[ran ${name}] ${clipLine(input, 160)}`
+          : `[ran ${name}]`,
+      );
+    } else if (e.type === "error") {
+      lines.push(`[error] ${clipLine(String(e.payload.message ?? ""), 160)}`);
+    }
+  }
+  if (lines.length === 0) return "";
+  let text = lines.join("\n");
+  if (text.length > budget) {
+    const head = lines.slice(0, Math.max(1, Math.ceil(lines.length * 0.6)));
+    const tail = lines.slice(-Math.max(1, Math.floor(lines.length * 0.25)));
+    text = `${head.join("\n")}\n[... ${Math.max(0, lines.length - head.length - tail.length)} more steps ...]\n${tail.join("\n")}`;
+    if (text.length > budget) text = text.slice(0, budget) + "...";
+  }
+  return text;
+}
 
 export function buildSummaryUserPrompt(
   stats: SummaryStats,
   insights: Insight[],
+  events: Event[] = [],
 ): string {
   const tools = Object.entries(stats.toolCalls)
     .map(([n, c]) => `${n}x${c}`)
@@ -228,9 +283,12 @@ export function buildSummaryUserPrompt(
     .map((p) => p.split("/").pop() ?? p)
     .join(", ");
   const signals = insights.map((i) => i.type).join(", ");
-  return [
-    `Duration: ${Math.round(stats.durationMs / 1000)}s. Events: ${stats.eventCount}. Errors: ${stats.errorCount}. Messages: ${stats.messageCount}.`,
-    `Tools: ${tools || "none"}. Models: ${models || "none"}. Files touched: ${files || "none"}.`,
-    `Signals: ${signals || "none"}.`,
+  const statsBlock = [
+    `Stats (context only): duration ${Math.round(stats.durationMs / 1000)}s, ${stats.eventCount} events, ${stats.errorCount} errors, ${stats.messageCount} messages.`,
+    `Tools: ${tools || "none"}. Models: ${models || "none"}. Files touched: ${files || "none"}. Signals: ${signals || "none"}.`,
   ].join("\n");
+  const convo = conversationDigest(events);
+  return convo
+    ? `Conversation (chronological - the actual prompts, replies, and actions):\n${convo}\n\n${statsBlock}`
+    : statsBlock;
 }

@@ -11,7 +11,7 @@ export function anthropicNarrator(
   apiKey: string,
   model = "claude-haiku-4-5-20251001",
 ): Narrator {
-  return async ({ summary }) => {
+  return async ({ summary, events }) => {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -26,7 +26,11 @@ export function anthropicNarrator(
         messages: [
           {
             role: "user",
-            content: buildSummaryUserPrompt(summary.stats, summary.insights),
+            content: buildSummaryUserPrompt(
+              summary.stats,
+              summary.insights,
+              events,
+            ),
           },
         ],
       }),

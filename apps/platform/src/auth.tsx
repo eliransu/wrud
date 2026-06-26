@@ -52,7 +52,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           wrud
         </div>
         <div className="wd-eyebrow" style={{ marginTop: 14 }}>
-          What R U Doing · agent session telemetry
+          What R U Doing - agent session telemetry
         </div>
         <h1 style={{ fontSize: 30, fontWeight: 800, margin: "26px 0 6px" }}>
           Connect your instrument.
@@ -71,7 +71,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
         <Input.Password
           size="large"
           aria-label="api-key"
-          placeholder="wrud_sk_local_…"
+          placeholder="wrud_sk_local_..."
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onPressEnter={() => draft.trim() && setApiKey(draft.trim())}
@@ -85,7 +85,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
           onClick={() => setApiKey(draft.trim())}
           style={{ marginTop: 14, height: 46, fontSize: 15 }}
         >
-          Connect →
+          Connect
         </Button>
       </div>
     </div>

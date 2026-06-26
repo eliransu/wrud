@@ -24,7 +24,7 @@ const TYPE_META: Record<string, { label: string; color: string }> = {
   custom: { label: "custom", color: "#9fb0a6" },
 };
 
-/** The "what" — the salient target/name for each event type. */
+/** The "what" - the salient target/name for each event type. */
 function eventName(e: any): string {
   const p = e.payload ?? {};
   switch (e.type) {
@@ -48,7 +48,7 @@ function eventName(e: any): string {
 /** A short one-line preview (never the full JSON). */
 function eventPreview(e: any): string {
   const p = e.payload ?? {};
-  const clip = (s: string, n = 90) => (s.length > n ? s.slice(0, n) + "…" : s);
+  const clip = (s: string, n = 90) => (s.length > n ? s.slice(0, n) + "..." : s);
   switch (e.type) {
     case "tool_call":
       return clip(
@@ -57,7 +57,7 @@ function eventPreview(e: any): string {
     case "message":
       return clip(p.text ?? `${p.chars ?? 0} chars`);
     case "model_use":
-      return `${(p.inputTokens ?? 0).toLocaleString()} in · ${(p.outputTokens ?? 0).toLocaleString()} out tokens${p.task ? ` · ${clip(p.task, 50)}` : ""}`;
+      return `${(p.inputTokens ?? 0).toLocaleString()} in / ${(p.outputTokens ?? 0).toLocaleString()} out tokens${p.calls && p.calls > 1 ? ` (${p.calls.toLocaleString()} calls)` : ""}${p.task ? ` - ${clip(p.task, 50)}` : ""}`;
     case "error":
       return clip(p.message ?? "");
     case "custom":
@@ -67,27 +67,27 @@ function eventPreview(e: any): string {
   }
 }
 
-/** Expanded-row detail — tool calls show Call (input) vs Response (output) side by side. */
+/** Expanded-row detail - tool calls show Call (input) vs Response (output) side by side. */
 function EventDetail({ event }: { event: any }) {
   const p = event.payload ?? {};
   if (event.type === "tool_call") {
     return (
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div className="wd-io call">
-          <div className="h">Call · input</div>
+          <div className="h">Call - input</div>
           {p.input == null ? (
-            <span style={{ color: "var(--muted)" }}>—</span>
+            <span style={{ color: "var(--muted)" }}>-</span>
           ) : (
             <JsonTree data={parseMaybe(p.input)} />
           )}
         </div>
         <div className="wd-io resp">
           <div className="h">
-            Response · output{" "}
+            Response - output{" "}
             {p.ok === false ? <Tag color="red">failed</Tag> : null}
           </div>
           {p.output == null ? (
-            <span style={{ color: "var(--muted)" }}>—</span>
+            <span style={{ color: "var(--muted)" }}>-</span>
           ) : (
             <JsonTree data={parseMaybe(p.output)} />
           )}
@@ -99,7 +99,7 @@ function EventDetail({ event }: { event: any }) {
     return (
       <div className="wd-io">
         <div className="h">
-          {p.role} message · {p.chars ?? 0} chars
+          {p.role} message - {p.chars ?? 0} chars
         </div>
         <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}>
           {p.text ?? (
@@ -129,7 +129,7 @@ export default function SessionDetail() {
     <>
       <PageHeader
         eyebrow="Session"
-        title={`${id.slice(0, 8)}…`}
+        title={`${id.slice(0, 8)}...`}
         extra={
           <Pill tone={STATUS_TONE[session.status] ?? "muted"}>
             {session.status}
@@ -252,7 +252,7 @@ export default function SessionDetail() {
                       background: "rgba(255,255,255,0.03)",
                     }}
                   >
-                    {m.model} ·{" "}
+                    {m.model} -{" "}
                     <span style={{ color: "var(--signal)" }}>
                       {m.outputTokens}
                     </span>{" "}
@@ -349,7 +349,7 @@ export default function SessionDetail() {
               render: (_: unknown, e: any) => (
                 <span className="wd-mono" style={{ fontSize: 12.5 }}>
                   {eventName(e) || (
-                    <span style={{ color: "var(--muted)" }}>—</span>
+                    <span style={{ color: "var(--muted)" }}>-</span>
                   )}
                 </span>
               ),
