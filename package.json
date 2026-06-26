@@ -1,0 +1,53 @@
+{
+  "name": "wrud-monorepo",
+  "version": "0.1.0",
+  "description": "What R U Doing - local-first, API-first recorder for AI-agent sessions (monorepo root; the publishable CLI is packages/cli, published as `wrud`).",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "homepage": "https://github.com/eliransu/wrud#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eliransu/wrud.git"
+  },
+  "bugs": {
+    "url": "https://github.com/eliransu/wrud/issues"
+  },
+  "keywords": [
+    "ai-agents",
+    "observability",
+    "telemetry",
+    "claude-code",
+    "llm",
+    "cost-optimization",
+    "session-recording",
+    "openapi",
+    "local-first",
+    "self-hosted"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "wrud": "node bin/wrud.mjs",
+    "start": "node bin/wrud.mjs",
+    "build:cli": "npm -w packages/cli run build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "serve": "npm -w @wrud/server run serve",
+    "seed:key": "npm -w @wrud/server run seed:key",
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

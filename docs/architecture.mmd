@@ -1,0 +1,13 @@
+flowchart TD
+    A["AI coding agent<br/>(Claude Code, Cursor, Codex)"]
+    A -->|"lifecycle hooks"| H["wrud hook<br/>record / flush / finalize"]
+    H -->|"events: tools, prompts,<br/>files, messages"| API["wrud API<br/>(local Hono server)"]
+    H -.->|"SessionEnd<br/>(detached, non-blocking)"| F["finalize worker"]
+    F -->|"token + model usage<br/>(from transcript)"| API
+    F -->|"client-mode summarize"| LLM["LLM narrator<br/>(claude -p, no API key)"]
+    LLM --> API
+    SDK["@wrud/sdk client"] --> API
+    API --> DB[("SQLite<br/>(local file)")]
+    API --> S["summarizer +<br/>insight analyzers"]
+    S --> DB
+    DB --> UI["Ant Design dashboard<br/>sessions, models, cost, lessons"]

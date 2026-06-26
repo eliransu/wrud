@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@wrud/shared": ["packages/shared/src/index.ts"],
+      "@wrud/server": ["packages/server/src/app.ts"],
+      "@wrud/sdk": ["packages/sdk/src/index.ts"]
+    }
+  },
+  "include": ["packages/*/src", "packages/*/scripts", "vitest.config.ts"]
+}

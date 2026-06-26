@@ -1,0 +1,23 @@
+{
+  "name": "@wrud/server",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/app.ts",
+    "./local": "./src/local.ts"
+  },
+  "scripts": {
+    "serve": "tsx src/node/serve.ts",
+    "seed:key": "tsx scripts/seed-admin-key.ts"
+  },
+  "dependencies": {
+    "@wrud/shared": "*",
+    "better-sqlite3": "^11.0.0",
+    "hono": "^4.6.0",
+    "@hono/node-server": "^1.13.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0"
+  }
+}

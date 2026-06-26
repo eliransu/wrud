@@ -1,0 +1,384 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+:root {
+  --signal: #b6f24e;
+  --signal-dim: #7fae33;
+  --amber: #ffb454;
+  --red: #ff6b6b;
+  --cyan: #5be0d6;
+  --bg: #0a0e0d;
+  --ink: #e8efe9;
+  --muted: #8fa298;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family:
+    "Hanken Grotesk",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(
+      1100px 520px at 80% -10%,
+      rgba(182, 242, 78, 0.1),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 600px at -5% 105%,
+      rgba(91, 224, 214, 0.06),
+      transparent 55%
+    ),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* faint dot-grid texture for depth */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.035) 1px,
+    transparent 1px
+  );
+  background-size: 22px 22px;
+}
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- typography helpers ---- */
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--display);
+  letter-spacing: -0.02em;
+}
+.wd-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.wd-mono {
+  font-family: var(--mono);
+}
+.wd-brand {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 24px;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wd-brand .wd-mascot {
+  width: 1.4em;
+  height: 1.4em;
+  object-fit: contain;
+  margin-right: 2px;
+  /* the black-on-transparent telemetry mascot, inverted to read on the dark theme */
+  filter: invert(1);
+}
+
+/* ---- stat tile ---- */
+.wd-tile {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.025),
+    rgba(255, 255, 255, 0)
+  );
+  padding: 20px 22px;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
+}
+.wd-tile:hover {
+  border-color: rgba(182, 242, 78, 0.3);
+  transform: translateY(-2px);
+}
+.wd-tile .v {
+  font-family: var(--mono);
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+}
+.wd-tile .v.accent {
+  color: var(--signal);
+  text-shadow: 0 0 22px rgba(182, 242, 78, 0.35);
+}
+.wd-tile .k {
+  margin-top: 12px;
+}
+.wd-tile::after {
+  content: "";
+  position: absolute;
+  right: -26px;
+  top: -26px;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(182, 242, 78, 0.16),
+    transparent 70%
+  );
+}
+
+/* ---- generic surface card ---- */
+.wd-card {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.02),
+    rgba(255, 255, 255, 0)
+  );
+  padding: 22px;
+}
+.wd-card-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+/* ---- status / signal pills ---- */
+.wd-pill {
+  display: inline-flex;
+  align-items: center;
+  align-self: center; /* never stretch to a flex parent's height */
+  flex: none;
+  width: fit-content;
+  height: 26px;
+  box-sizing: border-box;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.wd-pill .led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* ---- insight card ---- */
+.wd-insight {
+  display: flex;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 180, 84, 0.25);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 180, 84, 0.07),
+    rgba(255, 180, 84, 0)
+  );
+}
+.wd-insight .icon {
+  font-size: 18px;
+  color: var(--amber);
+  line-height: 1.4;
+}
+.wd-insight .t {
+  font-weight: 700;
+  color: var(--ink);
+}
+.wd-insight .d {
+  color: var(--muted);
+  margin-top: 3px;
+  font-size: 13.5px;
+}
+
+/* ---- staggered page-load reveal ---- */
+@keyframes wd-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.wd-rise {
+  animation: wd-rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* ---- JSON tree viewer ---- */
+.jt {
+  position: relative;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+.jt-copy {
+  position: absolute;
+  top: -2px;
+  right: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.jt-copy:hover {
+  color: var(--signal);
+  border-color: rgba(182, 242, 78, 0.4);
+}
+.jt-row {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.jt-node {
+  margin: 0;
+}
+.jt-summary {
+  cursor: pointer;
+  list-style: none;
+}
+.jt-summary::-webkit-details-marker {
+  display: none;
+}
+.jt-summary::before {
+  content: "▸";
+  color: var(--muted);
+  display: inline-block;
+  width: 1em;
+  transition: transform 0.15s;
+}
+.jt-node[open] > .jt-summary::before {
+  transform: rotate(90deg);
+}
+.jt-children {
+  padding-left: 16px;
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  margin-left: 4px;
+}
+.jt-key {
+  color: var(--cyan);
+}
+.jt-key::after {
+  content: ": ";
+  color: var(--muted);
+}
+.jt-str {
+  color: #cdeb8b;
+}
+.jt-num {
+  color: var(--amber);
+}
+.jt-bool {
+  color: var(--signal);
+}
+.jt-null {
+  color: var(--muted);
+  font-style: italic;
+}
+.jt-meta {
+  color: var(--muted);
+}
+
+/* ---- event-log call/response panels ---- */
+.wd-io {
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.015);
+}
+.wd-io.call {
+  border-left: 3px solid var(--cyan);
+}
+.wd-io.resp {
+  border-left: 3px solid var(--signal);
+}
+.wd-io .h {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+/* ---- scrollbar ---- */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(182, 242, 78, 0.3);
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---- antd nudges ---- */
+.ant-layout {
+  background: transparent !important;
+}
+.ant-menu-light,
+.ant-menu-light.ant-menu-root {
+  background: transparent !important;
+  border-inline-end: none !important;
+}
+.ant-layout-sider {
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+.ant-layout-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(10px);
+}
+.ant-table-wrapper .ant-table {
+  background: transparent;
+}
+.ant-card {
+  backdrop-filter: blur(6px);
+}
+.recharts-default-tooltip {
+  background: #0e1513 !important;
+  border: 1px solid rgba(182, 242, 78, 0.25) !important;
+  border-radius: 10px !important;
+  font-family: var(--mono);
+  font-size: 12px;
+}

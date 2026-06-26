@@ -1,0 +1,96 @@
+name: Bug report
+description: Something isn't working as expected
+title: "[bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report.
+        Please search [existing issues](https://github.com/eliransu/wrud/issues) first - your bug may already be reported.
+
+  - type: input
+    id: version
+    attributes:
+      label: wrud version
+      description: Run `npx @wrud/cli --version` or `npm list @wrud/cli`
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node.js version
+      description: Run `node --version`
+      placeholder: "v20.x.x"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How are you running wrud?
+      options:
+        - "npx @wrud/cli"
+        - "npm i -g @wrud/cli && wrud"
+        - "From source (npm run wrud)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: A minimal set of steps that reliably reproduce the issue.
+      placeholder: |
+        1. Run `npx @wrud/cli`
+        2. Call POST /v1/sessions with body ...
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What happened instead? Include any error output.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or output
+      description: Server output, browser console errors, or curl output. Redact any tokens.
+      render: shell
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I have removed any tokens or secrets from the logs above
+          required: true

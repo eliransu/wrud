@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+*.local
+.DS_Store
+*.db
+*.db-wal
+*.db-shm
+.tmp-*
+dist/
+playwright-report/
+test-results/
+.vite/
+
+# Local agent state — never publish (holds machine-local API keys / command history)
+.claude/
+.tmp-shots/
+
+# Internal business strategy — kept local, not part of the OSS repo
+docs/gtm/
+
+# npm auth (GitHub Packages token) — must never be committed
+.npmrc

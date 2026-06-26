@@ -1,0 +1,57 @@
+import { theme as antdTheme, type ThemeConfig } from "antd";
+
+/** wrud "mission control" dark theme - acid-lime signal accent on a near-black canvas. */
+export const wrudTheme: ThemeConfig = {
+  algorithm: antdTheme.darkAlgorithm,
+  token: {
+    colorPrimary: "#b6f24e",
+    colorInfo: "#5be0d6",
+    colorSuccess: "#b6f24e",
+    colorWarning: "#ffb454",
+    colorError: "#ff6b6b",
+    colorBgBase: "#0a0e0d",
+    colorTextBase: "#e8efe9",
+    colorBgContainer: "#111715",
+    colorBgElevated: "#161e1b",
+    colorBorder: "rgba(182,242,78,0.10)",
+    colorBorderSecondary: "rgba(255,255,255,0.06)",
+    borderRadius: 12,
+    fontFamily: "'Hanken Grotesk', system-ui, -apple-system, sans-serif",
+    fontSize: 14,
+    controlHeight: 38,
+    wireframe: false,
+  },
+  components: {
+    Layout: {
+      siderBg: "#0b110f",
+      headerBg: "rgba(11,17,15,0.72)",
+      bodyBg: "transparent",
+      headerHeight: 64,
+    },
+    Menu: {
+      itemBg: "transparent",
+      itemSelectedBg: "rgba(182,242,78,0.12)",
+      itemSelectedColor: "#caff5e",
+      itemColor: "#9fb0a6",
+      itemHoverColor: "#e8efe9",
+      itemHoverBg: "rgba(255,255,255,0.04)",
+      itemBorderRadius: 10,
+      itemMarginInline: 10,
+      itemHeight: 44,
+    },
+    Card: { colorBgContainer: "#111715", paddingLG: 22, borderRadiusLG: 16 },
+    Table: {
+      headerBg: "rgba(255,255,255,0.02)",
+      headerColor: "#8fa298",
+      rowHoverBg: "rgba(182,242,78,0.05)",
+      borderColor: "rgba(255,255,255,0.06)",
+      colorBgContainer: "transparent",
+      cellPaddingBlock: 14,
+    },
+    Modal: { contentBg: "#121916", headerBg: "#121916", borderRadiusLG: 16 },
+    Button: { primaryColor: "#08120a", fontWeight: 600, borderRadius: 10 },
+    Tag: { defaultBg: "rgba(255,255,255,0.05)", borderRadiusSM: 6 },
+    Input: { colorBgContainer: "#0e1513", activeBorderColor: "#b6f24e" },
+    Select: { colorBgContainer: "#0e1513" },
+  },
+};

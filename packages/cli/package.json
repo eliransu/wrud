@@ -1,0 +1,53 @@
+{
+  "name": "@wrud/cli",
+  "version": "0.2.1",
+  "description": "Run wrud locally with one command - a local-first recorder for AI-agent sessions (tools, models, cost, insights). `npx @wrud/cli`.",
+  "license": "MIT",
+  "type": "module",
+  "homepage": "https://github.com/eliransu/wrud#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eliransu/wrud.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/eliransu/wrud/issues"
+  },
+  "keywords": [
+    "ai-agents",
+    "observability",
+    "claude-code",
+    "llm",
+    "cost-optimization",
+    "session-recording",
+    "local-first",
+    "cli"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "wrud": "dist/cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "prepublishOnly": "node build.mjs"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0"
+  },
+  "devDependencies": {
+    "@wrud/platform": "*",
+    "@wrud/sdk": "*",
+    "@wrud/server": "*",
+    "@wrud/shared": "*",
+    "esbuild": "^0.24.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  }
+}
