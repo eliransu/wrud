@@ -12,6 +12,7 @@ import { runServer } from "./server.js";
 import { runDoctor } from "./doctor.js";
 import { runInstallHooks } from "./install-hooks.js";
 import { runHook } from "./hooks.js";
+import { runCleanup } from "./cleanup.js";
 import { providerIds } from "./providers.js";
 
 const CLI_PATH = fileURLToPath(import.meta.url); // dist/cli.mjs after bundling
@@ -23,6 +24,7 @@ Usage:
   wrud doctor                       verify capture works end-to-end
   wrud install-hooks [--agent <${providerIds.join("|")}>] [--user|--project]
                                     wire that agent's hooks, mint an ingest key, self-verify
+  wrud cleanup [--dry-run] [--yes]  remove everything wrud installed (data, tokens, hooks); undo install
   wrud hook <record|flush|finalize> [--provider <id>]   (invoked by the agent's hook config)
 
 Supported agents: ${providerIds.join(", ")}.
@@ -42,6 +44,10 @@ switch (cmd) {
     break;
   case "install-hooks":
     process.exit(await runInstallHooks(rest, CLI_PATH));
+    break;
+  case "cleanup":
+  case "uninstall":
+    process.exit(await runCleanup(rest));
     break;
   case "hook":
     await runHook(rest[0] ?? "", CLI_PATH);

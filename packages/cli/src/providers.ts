@@ -42,6 +42,11 @@ export interface ProviderSpec {
    * full shell command for a given wrud hook subcommand. Idempotent: prior wrud entries are
    * stripped first so re-running doesn't stack duplicates. */
   mergeHooks(settings: any, cmdFor: (sub: HookSub) => string): any;
+  /** Inverse of mergeHooks: strip every wrud hook entry from the settings object, leaving the
+   * user's own config untouched. Prunes event keys (and provider-only scaffolding like Cursor's
+   * `version`) that become empty, so an install-created file ends up `{}` and the caller can
+   * delete it. Returns true if anything was removed. */
+  removeHooks(settings: any): boolean;
   /** Does this settings object already contain wrud hooks? (cross-scope dedupe warning) */
   hasWrudHooks(settings: any): boolean;
   /** Map a raw hook payload (stdin JSON) to the normalized shape. */
@@ -83,6 +88,29 @@ const claudeCode: ProviderSpec = {
       settings.hooks[event] = kept;
     }
     return settings;
+  },
+  removeHooks(settings) {
+    if (!settings?.hooks || typeof settings.hooks !== "object") return false;
+    let removed = false;
+    for (const event of Object.keys(settings.hooks)) {
+      const groups: any[] = Array.isArray(settings.hooks[event])
+        ? settings.hooks[event]
+        : [];
+      const kept = groups
+        .map((g: any) => ({
+          ...g,
+          hooks: (g.hooks || []).filter((h: any) => {
+            const drop = isWrudCmd(h?.command);
+            removed ||= drop;
+            return !drop;
+          }),
+        }))
+        .filter((g: any) => (g.hooks || []).length > 0);
+      if (kept.length > 0) settings.hooks[event] = kept;
+      else delete settings.hooks[event];
+    }
+    if (Object.keys(settings.hooks).length === 0) delete settings.hooks;
+    return removed;
   },
   hasWrudHooks: (settings) =>
     Object.values(settings?.hooks || {}).some((groups: any) =>
@@ -158,6 +186,28 @@ const cursor: ProviderSpec = {
       settings.hooks[event] = kept;
     }
     return settings;
+  },
+  removeHooks(settings) {
+    if (!settings?.hooks || typeof settings.hooks !== "object") return false;
+    let removed = false;
+    for (const event of Object.keys(settings.hooks)) {
+      const arr: any[] = Array.isArray(settings.hooks[event])
+        ? settings.hooks[event]
+        : [];
+      const kept = arr.filter((h: any) => {
+        const drop = isWrudCmd(h?.command);
+        removed ||= drop;
+        return !drop;
+      });
+      if (kept.length > 0) settings.hooks[event] = kept;
+      else delete settings.hooks[event];
+    }
+    if (Object.keys(settings.hooks).length === 0) {
+      // `version` is scaffolding for the hooks schema - meaningless without hooks.
+      delete settings.hooks;
+      delete settings.version;
+    }
+    return removed;
   },
   hasWrudHooks: (settings) =>
     Object.values(settings?.hooks || {}).some((arr: any) =>
