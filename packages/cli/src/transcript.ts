@@ -1,8 +1,8 @@
 /**
- * Buffer/transcript helpers (ported from examples/cc-hooks/lib.mjs). HOOK-FIRST capture: tool
- * I/O, prompts, and assistant text come from hook payloads; the ONLY thing hooks don't carry -
- * model + token usage - is read once at SessionEnd from the transcript (transcriptToUsage).
- * This is the single agent-specific read, isolated here as a usage enricher (not capture).
+ * Buffer/transcript helpers. HOOK-FIRST capture: tool I/O, prompts, and assistant text all come
+ * from hook payloads. The ONLY thing some agents' hooks don't carry - model + token usage - is
+ * read once at session end from the transcript (transcriptToUsage), isolated here as an optional
+ * usage enricher, not the capture path.
  */
 interface BufferLine {
   t?: number;
@@ -78,7 +78,7 @@ export function bufferToEvents(lines: BufferLine[]): BufferedEvent[] {
 }
 
 /**
- * Extract model + token usage from a Claude Code transcript. Two passes:
+ * Extract model + token usage from an agent transcript (Anthropic-style usage records). Two passes:
  *   1. dedup by message id, cache-aware (input = input + cache_creation + cache_read), keeping
  *      the most-complete sighting of each assistant message (streaming logs partials first);
  *   2. AGGREGATE per model into ONE record carrying summed tokens + a `calls` count.

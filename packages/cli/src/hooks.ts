@@ -1,13 +1,12 @@
 /**
- * `wrud hook <record|flush|finalize>` - the bundled Claude Code hook logic (no external
- * scripts, no /abs/path placeholders). Design goals from real-world pain:
- *   - LOUD failures: every error is appended to ~/.wrud/hooks.log AND stderr. A recorder that
- *     records nothing while exiting 0 is the worst failure for a data tool, so we never swallow.
- *   - Non-blocking SessionEnd: `finalize` spawns a DETACHED worker and returns immediately, so
- *     closing the conversation never waits on transcript reads or LLM summarization.
- *   - Single-session dedupe: project + user hooks both firing record ONE session, not two.
- *   - Recursion-safe: if WRUD_IN_SUMMARY is set (we're inside the narrator's nested Claude
- *     session) every hook no-ops.
+ * `wrud hook <record|flush|finalize> [--provider <id>]` - the bundled hook logic (no external
+ * scripts). Provider-agnostic: a raw agent payload is normalized via the provider registry, then
+ * handled by kind. Design goals from real-world pain:
+ *   - LOUD failures: every error -> ~/.wrud/hooks.log AND stderr (never silently record nothing).
+ *   - Non-blocking finalize: a DETACHED worker does transcript reads + summarization, so closing
+ *     the conversation never waits.
+ *   - Single-session dedupe: project + user hooks both firing record ONE session.
+ *   - Recursion-safe: if WRUD_IN_SUMMARY is set (inside the narrator's nested session), no-op.
  */
 import { createWrudClient } from "@wrud/sdk";
 import { spawn } from "node:child_process";
@@ -22,8 +21,13 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { BASE, LOG_FILE, ensureHome, http, resolveIngestToken } from "./env.js";
-import { claudeCliNarrator, isNestedSummaryRun } from "./narrator.js";
+import { cliNarrator, isNestedSummaryRun } from "./narrator.js";
 import { bufferToEvents, transcriptToUsage } from "./transcript.js";
+import {
+  getProvider,
+  type NormalizedHook,
+  type ProviderSpec,
+} from "./providers.js";
 
 const CAP = 6000;
 const cap = (v: unknown): string | undefined => {
@@ -36,16 +40,15 @@ const sanitize = (s: unknown): string =>
     .replace(/[^A-Za-z0-9_-]/g, "")
     .slice(0, 64) || "default";
 
-const dir = join(tmpdir(), "wrud-cc");
+const dir = join(tmpdir(), "wrud-sessions");
 const bufPath = (sid: string) => join(dir, `${sid}.ndjson`);
 const statePath = (sid: string) => join(dir, `${sid}.state.json`);
 const payloadPath = (sid: string) => join(dir, `${sid}.sessionend.json`);
 
 function log(msg: string): void {
-  const line = `[${new Date().toISOString()}] ${msg}\n`;
   try {
     ensureHome();
-    appendFileSync(LOG_FILE, line);
+    appendFileSync(LOG_FILE, `[${new Date().toISOString()}] ${msg}\n`);
   } catch {
     /* ignore */
   }
@@ -66,6 +69,10 @@ type State = {
   startedAt?: string;
   flushed?: number;
   lastAssistant?: string;
+  providerId?: string;
+  agentName?: string;
+  model?: string; // captured from hooks when the agent reports it on the payload
+  assistantTurns?: number;
 };
 const readState = (sid: string): State =>
   existsSync(statePath(sid))
@@ -74,95 +81,108 @@ const readState = (sid: string): State =>
 const writeState = (sid: string, s: State) =>
   writeFileSync(statePath(sid), JSON.stringify(s));
 
-/** SessionStart / UserPromptSubmit / PostToolUse -> buffer (and create the session once). */
-async function record(p: any): Promise<void> {
-  const sid = sanitize(p.session_id);
+/** session_start -> create one session; user_prompt / tool_use -> buffer content. */
+async function record(
+  h: NormalizedHook,
+  provider: ProviderSpec,
+): Promise<void> {
+  const sid = sanitize(h.sessionId);
   mkdirSync(dir, { recursive: true });
 
-  if (p.hook_event_name === "SessionStart") {
-    // Single-session dedupe: the FIRST hook layer to atomically create the state file owns
-    // session creation; a second layer (project + user both wired) finds it and no-ops.
+  if (h.kind === "session_start") {
+    // Single-session dedupe: the FIRST layer to atomically create the state file owns creation.
     let owner = false;
     try {
-      writeFileSync(statePath(sid), JSON.stringify({ flushed: 0 }), {
-        flag: "wx",
-      });
+      writeFileSync(
+        statePath(sid),
+        JSON.stringify({
+          flushed: 0,
+          providerId: provider.id,
+          agentName: provider.agentName,
+          model: h.model,
+        }),
+        { flag: "wx" },
+      );
       owner = true;
     } catch {
-      owner = false; // another layer already created it
+      owner = false;
     }
     appendFileSync(
       bufPath(sid),
-      JSON.stringify({ t: Date.now(), kind: "start", cwd: p.cwd || "" }) + "\n",
+      JSON.stringify({ t: Date.now(), kind: "start", cwd: h.cwd || "" }) + "\n",
     );
-    if (!owner) return; // dedupe: don't open a second wrud session for the same conversation
+    if (!owner) return;
 
     const token = resolveIngestToken();
-    if (!token) {
-      log(
-        "SessionStart: no ingest token - run `wrud install-hooks`. Buffering locally only.",
+    if (!token)
+      return log(
+        "session start: no ingest token - run `wrud install-hooks`. Buffering locally only.",
       );
-      return;
-    }
     const res = await http("POST", "/v1/sessions", token, {
-      user: { id: process.env.USER || "claude-code-user" },
-      agent: { name: "claude-code" },
-      runtime: { os: process.platform, cwd: p.cwd || "" },
-      metadata: { ccSession: sid },
+      user: { id: process.env.USER || "user" },
+      agent: { name: provider.agentName },
+      runtime: { os: process.platform, cwd: h.cwd || "" },
+      metadata: { agentSession: sid, provider: provider.id },
     });
     if (res.ok && res.json?.sessionId) {
       writeState(sid, {
         wrudSessionId: res.json.sessionId,
         startedAt: res.json.startedAt,
         flushed: 0,
+        providerId: provider.id,
+        agentName: provider.agentName,
+        model: h.model,
+        assistantTurns: 0,
       });
     } else {
       log(
-        `SessionStart: create session FAILED (HTTP ${res.status}${res.error ? " " + res.error : ""}) at ${BASE} - check the token scope (needs ingest). Run \`wrud doctor\`.`,
+        `session start: create FAILED (HTTP ${res.status}${res.error ? " " + res.error : ""}) at ${BASE} - check token scope (needs ingest). Run \`wrud doctor\`.`,
       );
     }
     return;
   }
 
   const rec: any = { t: Date.now() };
-  if (
-    p.hook_event_name === "PreToolUse" ||
-    p.hook_event_name === "PostToolUse"
-  ) {
+  if (h.kind === "tool_use") {
     rec.kind = "tool";
-    rec.tool = String(p.tool_name || "unknown");
-    rec.ok = p.tool_response ? p.tool_response.ok !== false : true;
-    rec.input = cap(p.tool_input);
-    rec.output = cap(p.tool_response);
-  } else if (p.hook_event_name === "UserPromptSubmit") {
+    rec.tool = String(h.toolName || "unknown");
+    rec.ok = h.ok !== false;
+    rec.input = cap(h.toolInput);
+    rec.output = cap(h.toolOutput);
+  } else if (h.kind === "user_prompt") {
     rec.kind = "msg";
     rec.role = "user";
-    rec.text = cap(p.prompt);
-    rec.chars = String(p.prompt || "").length;
+    rec.text = cap(h.prompt);
+    rec.chars = String(h.prompt || "").length;
   } else {
     return;
   }
   appendFileSync(bufPath(sid), JSON.stringify(rec) + "\n");
+  if (h.model) {
+    // remember the model the agent reported, for finalize when there's no token transcript
+    const st = readState(sid);
+    if (!st.model) writeState(sid, { ...st, model: h.model });
+  }
 }
 
-/** Stop (end of a turn): record the assistant's reply, flush buffered events to the open session. */
-async function flush(p: any): Promise<void> {
-  const sid = sanitize(p.session_id);
+/** assistant_msg -> record the reply text and flush buffered events to the open session. */
+async function flush(
+  h: NormalizedHook,
+  _provider: ProviderSpec,
+): Promise<void> {
+  if (h.kind !== "assistant_msg") return;
+  const sid = sanitize(h.sessionId);
   if (!existsSync(statePath(sid)) || !existsSync(bufPath(sid))) return;
   const state = readState(sid);
-  if (!state.wrudSessionId) {
-    log(
-      "flush: no wrud session id yet (SessionStart may have failed) - skipping flush.",
+  if (!state.wrudSessionId)
+    return log(
+      "flush: no session id yet (session start may have failed) - skipping.",
     );
-    return;
-  }
   const token = resolveIngestToken();
   if (!token) return log("flush: no ingest token.");
 
   const text =
-    typeof p.last_assistant_message === "string"
-      ? p.last_assistant_message.trim()
-      : "";
+    typeof h.assistantText === "string" ? h.assistantText.trim() : "";
   if (text && text !== state.lastAssistant) {
     appendFileSync(
       bufPath(sid),
@@ -175,7 +195,9 @@ async function flush(p: any): Promise<void> {
       }) + "\n",
     );
     state.lastAssistant = text.slice(0, 200);
+    state.assistantTurns = (state.assistantTurns || 0) + 1;
   }
+  if (h.model && !state.model) state.model = h.model;
 
   const lines = readFileSync(bufPath(sid), "utf8")
     .trim()
@@ -207,41 +229,68 @@ async function flush(p: any): Promise<void> {
   writeState(sid, state);
 }
 
-/** SessionEnd: detach a worker and return IMMEDIATELY so closing the conversation never blocks. */
-function finalize(raw: string, p: any, cliPath: string): void {
-  const sid = sanitize(p.session_id);
+/** session_end -> detach a worker and return IMMEDIATELY so closing the conversation never blocks. */
+function finalize(
+  raw: string,
+  h: NormalizedHook,
+  provider: ProviderSpec,
+  cliPath: string,
+): void {
+  const sid = sanitize(h.sessionId);
   mkdirSync(dir, { recursive: true });
   writeFileSync(payloadPath(sid), raw);
-  // Detached + unref'd: the worker outlives this process; SessionEnd returns now.
   const child = spawn(
     process.execPath,
-    [cliPath, "hook", "finalize-worker", payloadPath(sid)],
-    {
-      detached: true,
-      stdio: "ignore",
-    },
+    [
+      cliPath,
+      "hook",
+      "finalize-worker",
+      payloadPath(sid),
+      "--provider",
+      provider.id,
+    ],
+    { detached: true, stdio: "ignore" },
   );
   child.unref();
 }
 
-/** The detached worker: transcript usage -> replay -> LLM (client-mode) summarize -> store. */
-async function finalizeWorker(payloadFile: string): Promise<void> {
+/** The detached worker: usage (transcript or agent-reported model) -> replay -> summarize -> store. */
+async function finalizeWorker(
+  payloadFile: string,
+  provider: ProviderSpec,
+): Promise<void> {
   if (!existsSync(payloadFile)) return;
-  const p = JSON.parse(readFileSync(payloadFile, "utf8"));
-  const sid = sanitize(p.session_id);
+  const raw = JSON.parse(readFileSync(payloadFile, "utf8"));
+  const h = provider.normalize(raw);
+  const sid = sanitize(h.sessionId);
   const token = resolveIngestToken();
   if (!token) return log("finalize: no ingest token - cannot summarize.");
   if (!existsSync(bufPath(sid))) return log(`finalize: no buffer for ${sid}.`);
+  const state = readState(sid);
 
-  // Pull model + token usage once from the transcript (the only thing hooks don't carry).
-  if (p.transcript_path && existsSync(p.transcript_path)) {
-    const usage = transcriptToUsage(readFileSync(p.transcript_path, "utf8"));
-    if (usage.length)
-      appendFileSync(
-        bufPath(sid),
-        usage.map((r) => JSON.stringify(r)).join("\n") + "\n",
-      );
+  // Token/model usage: from the transcript when the agent exposes a parseable one; otherwise fall
+  // back to the model the agent reported on hooks, with a call count but no tokens.
+  let usage =
+    h.transcriptPath && existsSync(h.transcriptPath)
+      ? transcriptToUsage(readFileSync(h.transcriptPath, "utf8"))
+      : [];
+  if (usage.length === 0 && state.model) {
+    usage = [
+      {
+        t: Date.now(),
+        kind: "model",
+        model: state.model,
+        inputTokens: 0,
+        outputTokens: 0,
+        calls: state.assistantTurns || 1,
+      },
+    ];
   }
+  if (usage.length)
+    appendFileSync(
+      bufPath(sid),
+      usage.map((r) => JSON.stringify(r)).join("\n") + "\n",
+    );
 
   const lines = readFileSync(bufPath(sid), "utf8")
     .trim()
@@ -249,7 +298,7 @@ async function finalizeWorker(payloadFile: string): Promise<void> {
     .filter(Boolean)
     .map((l) => JSON.parse(l));
   const start = lines.find((l: any) => l.kind === "start");
-  const state = readState(sid);
+  const agentName = state.agentName || provider.agentName;
 
   const client = createWrudClient({ baseUrl: BASE, apiKey: token });
   let session;
@@ -257,30 +306,28 @@ async function finalizeWorker(payloadFile: string): Promise<void> {
     session = client.resumeSession(state.wrudSessionId);
   } else {
     session = await client.startSession({
-      user: { id: process.env.USER || "claude-code-user" },
-      agent: { name: "claude-code" },
+      user: { id: process.env.USER || "user" },
+      agent: { name: agentName },
       runtime: {
         os: process.platform,
-        cwd: start?.cwd || p.cwd || process.cwd(),
+        cwd: start?.cwd || h.cwd || process.cwd(),
       },
-      metadata: { ccSession: sid },
+      metadata: { agentSession: sid, provider: provider.id },
     });
   }
   for (const e of bufferToEvents(lines))
     session.event({ type: e.type, ...e.payload });
 
-  // Client-mode summary with the user's Claude Code login as the narrator (LLM), recursion-guarded
-  // inside claudeCliNarrator. Falls back to the deterministic narrative if `claude` isn't usable.
+  // Client-mode summary via the local narrator (best-effort), recursion-guarded inside cliNarrator.
   try {
     const summary = await session.summarize({
       mode: "client",
-      narrator: claudeCliNarrator,
+      narrator: cliNarrator,
     });
     log(
-      `finalize: summarized ${session.sessionId} (${summary.stats.eventCount} events, ${summary.insights.length} insight(s), narrative via ${summary.summarizerVersion}).`,
+      `finalize: summarized ${session.sessionId} (${summary.stats.eventCount} events, ${summary.insights.length} insight(s), via ${summary.summarizerVersion}).`,
     );
   } catch (e) {
-    // Last resort: server-side deterministic summary so the session still finalizes.
     try {
       await session.summarize({ mode: "server" });
       log(
@@ -298,20 +345,26 @@ async function finalizeWorker(payloadFile: string): Promise<void> {
   rmSync(payloadFile, { force: true });
 }
 
+const argVal = (flag: string): string | undefined => {
+  const i = process.argv.indexOf(flag);
+  return i >= 0 ? process.argv[i + 1] : undefined;
+};
+
 export async function runHook(sub: string, cliPath: string): Promise<void> {
-  // Inside the narrator's nested Claude Code session - never record (would loop / double-count).
-  if (isNestedSummaryRun()) return;
+  if (isNestedSummaryRun()) return; // inside the narrator's nested session - never record
+  const provider = getProvider(argVal("--provider"));
   try {
     if (sub === "finalize-worker") {
-      const payloadFile = process.argv[4]; // `wrud hook finalize-worker <payloadFile>`
-      if (payloadFile) await finalizeWorker(payloadFile);
+      const payloadFile = process.argv[4];
+      if (payloadFile) await finalizeWorker(payloadFile, provider);
       return;
     }
     const raw = await readStdin();
-    const p = JSON.parse(raw || "{}");
-    if (sub === "record") await record(p);
-    else if (sub === "flush") await flush(p);
-    else if (sub === "finalize") finalize(raw, p, cliPath);
+    const payload = JSON.parse(raw || "{}");
+    const h = provider.normalize(payload);
+    if (sub === "record") await record(h, provider);
+    else if (sub === "flush") await flush(h, provider);
+    else if (sub === "finalize") finalize(raw, h, provider, cliPath);
     else log(`unknown hook subcommand: ${sub}`);
   } catch (e) {
     log(`hook ${sub} error: ${e instanceof Error ? e.message : e}`);

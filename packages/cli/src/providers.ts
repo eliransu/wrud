@@ -1,0 +1,230 @@
+/**
+ * Provider registry - the ONE place agent-specific integration details live: where each agent's
+ * hook config file is, how to write hooks into it, which lifecycle event routes to which wrud
+ * hook (record/flush/finalize), and how to normalize that agent's hook payload into wrud's shape.
+ * Everything else in wrud is provider-agnostic. Add an agent by adding an entry here plus a
+ * providers/<id>.md doc - no other code changes.
+ */
+import { homedir } from "node:os";
+import { join } from "node:path";
+
+export type HookKind =
+  | "session_start"
+  | "user_prompt"
+  | "tool_use"
+  | "assistant_msg"
+  | "session_end"
+  | "ignore";
+
+/** Provider-neutral view of a single hook invocation. */
+export interface NormalizedHook {
+  kind: HookKind;
+  sessionId: string; // stable correlation id across one conversation's hooks
+  cwd?: string;
+  model?: string; // model name when the agent provides it on hooks (Cursor does)
+  prompt?: string;
+  toolName?: string;
+  toolInput?: unknown;
+  toolOutput?: unknown;
+  ok?: boolean;
+  assistantText?: string;
+  transcriptPath?: string;
+}
+
+export type HookSub = "record" | "flush" | "finalize";
+
+export interface ProviderSpec {
+  id: string;
+  label: string;
+  agentName: string; // recorded as session.agent.name
+  settingsPath(scope: "user" | "project"): string;
+  /** Merge wrud's hooks into the agent's settings object (returns it). cmdFor(sub) builds the
+   * full shell command for a given wrud hook subcommand. Idempotent: prior wrud entries are
+   * stripped first so re-running doesn't stack duplicates. */
+  mergeHooks(settings: any, cmdFor: (sub: HookSub) => string): any;
+  /** Does this settings object already contain wrud hooks? (cross-scope dedupe warning) */
+  hasWrudHooks(settings: any): boolean;
+  /** Map a raw hook payload (stdin JSON) to the normalized shape. */
+  normalize(payload: any): NormalizedHook;
+}
+
+const isWrudCmd = (cmd: unknown): boolean =>
+  typeof cmd === "string" && /\bhook\b/.test(cmd) && /wrud|cli\.mjs/.test(cmd);
+
+/* ----------------------------------------------------------------------------- claude-code -- */
+const claudeCode: ProviderSpec = {
+  id: "claude-code",
+  label: "Claude Code",
+  agentName: "claude-code",
+  settingsPath: (scope) =>
+    scope === "project"
+      ? join(process.cwd(), ".claude", "settings.json")
+      : join(homedir(), ".claude", "settings.json"),
+  mergeHooks(settings, cmdFor) {
+    settings.hooks ??= {};
+    const map: Record<string, HookSub> = {
+      SessionStart: "record",
+      UserPromptSubmit: "record",
+      PostToolUse: "record",
+      Stop: "flush",
+      SessionEnd: "finalize",
+    };
+    for (const [event, sub] of Object.entries(map)) {
+      const existing: any[] = Array.isArray(settings.hooks[event])
+        ? settings.hooks[event]
+        : [];
+      const kept = existing
+        .map((g: any) => ({
+          ...g,
+          hooks: (g.hooks || []).filter((h: any) => !isWrudCmd(h?.command)),
+        }))
+        .filter((g: any) => (g.hooks || []).length > 0);
+      kept.push({ hooks: [{ type: "command", command: cmdFor(sub) }] });
+      settings.hooks[event] = kept;
+    }
+    return settings;
+  },
+  hasWrudHooks: (settings) =>
+    Object.values(settings?.hooks || {}).some((groups: any) =>
+      (Array.isArray(groups) ? groups : []).some((g: any) =>
+        (g?.hooks || []).some((h: any) => isWrudCmd(h?.command)),
+      ),
+    ),
+  normalize(p) {
+    const sid = String(p.session_id ?? "");
+    switch (p.hook_event_name) {
+      case "SessionStart":
+        return { kind: "session_start", sessionId: sid, cwd: p.cwd };
+      case "UserPromptSubmit":
+        return { kind: "user_prompt", sessionId: sid, prompt: p.prompt };
+      case "PreToolUse":
+      case "PostToolUse":
+        return {
+          kind: "tool_use",
+          sessionId: sid,
+          toolName: p.tool_name,
+          toolInput: p.tool_input,
+          toolOutput: p.tool_response,
+          ok: p.tool_response ? p.tool_response.ok !== false : true,
+        };
+      case "Stop":
+        return {
+          kind: "assistant_msg",
+          sessionId: sid,
+          assistantText:
+            typeof p.last_assistant_message === "string"
+              ? p.last_assistant_message
+              : undefined,
+        };
+      case "SessionEnd":
+        return {
+          kind: "session_end",
+          sessionId: sid,
+          cwd: p.cwd,
+          transcriptPath: p.transcript_path,
+        };
+      default:
+        return { kind: "ignore", sessionId: sid };
+    }
+  },
+};
+
+/* --------------------------------------------------------------------------------- cursor -- */
+const cursor: ProviderSpec = {
+  id: "cursor",
+  label: "Cursor",
+  agentName: "cursor",
+  settingsPath: (scope) =>
+    scope === "project"
+      ? join(process.cwd(), ".cursor", "hooks.json")
+      : join(homedir(), ".cursor", "hooks.json"),
+  mergeHooks(settings, cmdFor) {
+    settings.version ??= 1;
+    settings.hooks ??= {};
+    const map: Record<string, HookSub> = {
+      sessionStart: "record",
+      beforeSubmitPrompt: "record",
+      afterFileEdit: "record",
+      afterShellExecution: "record",
+      afterAgentResponse: "flush",
+      sessionEnd: "finalize",
+    };
+    for (const [event, sub] of Object.entries(map)) {
+      const existing: any[] = Array.isArray(settings.hooks[event])
+        ? settings.hooks[event]
+        : [];
+      const kept = existing.filter((h: any) => !isWrudCmd(h?.command));
+      kept.push({ type: "command", command: cmdFor(sub) });
+      settings.hooks[event] = kept;
+    }
+    return settings;
+  },
+  hasWrudHooks: (settings) =>
+    Object.values(settings?.hooks || {}).some((arr: any) =>
+      (Array.isArray(arr) ? arr : []).some((h: any) => isWrudCmd(h?.command)),
+    ),
+  normalize(p) {
+    const sid = String(p.conversation_id ?? p.session_id ?? "");
+    const model = p.model ?? p.model_id;
+    switch (p.hook_event_name) {
+      case "sessionStart":
+        return {
+          kind: "session_start",
+          sessionId: sid,
+          cwd: (p.workspace_roots && p.workspace_roots[0]) || p.cwd,
+          model,
+        };
+      case "beforeSubmitPrompt":
+        return { kind: "user_prompt", sessionId: sid, prompt: p.prompt, model };
+      case "afterFileEdit":
+        return {
+          kind: "tool_use",
+          sessionId: sid,
+          toolName: "Edit",
+          toolInput: { file_path: p.file_path, edits: p.edits },
+          ok: true,
+          model,
+        };
+      case "beforeShellExecution":
+      case "afterShellExecution":
+        return {
+          kind: "tool_use",
+          sessionId: sid,
+          toolName: "Shell",
+          toolInput: { command: p.command, cwd: p.cwd },
+          toolOutput: p.output,
+          ok: true,
+          model,
+        };
+      case "afterAgentResponse":
+        return {
+          kind: "assistant_msg",
+          sessionId: sid,
+          assistantText: typeof p.text === "string" ? p.text : undefined,
+          model,
+        };
+      case "sessionEnd":
+        return {
+          kind: "session_end",
+          sessionId: sid,
+          transcriptPath: p.transcript_path,
+          model,
+        };
+      default:
+        return { kind: "ignore", sessionId: sid };
+    }
+  },
+};
+
+const REGISTRY: Record<string, ProviderSpec> = {
+  "claude-code": claudeCode,
+  cursor,
+};
+
+export const providerIds = Object.keys(REGISTRY);
+export const defaultProviderId = claudeCode.id;
+
+/** Look up a provider by id; defaults to the default provider (back-compat for hooks installed without --provider). */
+export function getProvider(id: string | undefined): ProviderSpec {
+  return (id && REGISTRY[id]) || claudeCode;
+}

@@ -19,6 +19,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.0] - 2026-06-26
+
+### Added
+
+- **Cursor support** (Cursor 1.7+ hooks). `wrud install-hooks --agent cursor` writes `.cursor/hooks.json`; sessions record via Cursor's lifecycle hooks (`sessionStart`, `beforeSubmitPrompt`, `afterFileEdit`, `afterShellExecution`, `afterAgentResponse`, `sessionEnd`). The model name is captured from the hook payload; token/cost numbers are deferred until Cursor's transcript format is documented.
+- **Provider registry** (`packages/cli/src/providers.ts`) - the single place agent-specific config path/format, event routing, and payload normalization live. `install-hooks` takes `--agent <id>`; `hook` takes `--provider <id>`.
+- `providers/claude-code.md` and `providers/cursor.md` - per-agent "copy to your AI assistant" reference docs, linked from the README.
+
+### Changed
+
+- **De-branded the core.** The server, SDK, schemas, and dashboard are provider-agnostic - no hardcoded agent name (`agent.name` is just a string set by the provider). The summary narrator is generic (`WRUD_NARRATOR_CMD`, default `claude -p`, no API key). README install instructions are agent-neutral and point to `providers/`.
+
+### Removed
+
+- `@wrud/sdk/claude-code` adapter and the `examples/` hook scripts - superseded by `wrud hook` + the provider registry.
+
+---
+
 ## [0.2.2] - 2026-06-26
 
 ### Changed

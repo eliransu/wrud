@@ -3,8 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./claude-code": "./src/claude-code.ts"
+    ".": "./src/index.ts"
   },
   "dependencies": {
     "@wrud/shared": "*"

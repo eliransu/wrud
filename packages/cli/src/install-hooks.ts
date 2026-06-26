@@ -1,43 +1,46 @@
 /**
- * `wrud install-hooks [--user|--project] [--agent claude-code]` - the real installer. It:
- *   1. mints a dedicated LEAST-PRIVILEGE ingest key (not the admin/dashboard token) and stores
- *      it 0600 at ~/.wrud/ingest-token,
- *   2. merges wrud's hook commands into the right settings.json (user = all projects; project =
- *      this repo only), idempotently and without clobbering existing hooks,
+ * `wrud install-hooks [--agent <id>] [--user|--project]` - the real installer. It:
+ *   1. mints a dedicated LEAST-PRIVILEGE ingest key (not the admin/dashboard token), stored 0600,
+ *   2. merges wrud's hooks into the chosen agent's config file (provider registry knows the path,
+ *      format, and event routing) - user level (all projects) or project level - idempotently,
  *   3. warns about the double-capture footgun if wrud hooks already exist in the OTHER scope,
  *   4. self-verifies with `wrud doctor`.
  * No /abs/path placeholders, no "figure out the token yourself".
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 import { INGEST_TOKEN_FILE, ensureHome, ensureToken } from "./env.js";
+import {
+  getProvider,
+  providerIds,
+  defaultProviderId,
+  type HookSub,
+} from "./providers.js";
 import { runDoctor } from "./doctor.js";
-
-const EVENT_SUB: Record<string, string> = {
-  SessionStart: "record",
-  UserPromptSubmit: "record",
-  PostToolUse: "record",
-  Stop: "flush",
-  SessionEnd: "finalize",
-};
-
-const isWrudCmd = (cmd: unknown): boolean =>
-  typeof cmd === "string" && /\bhook\b/.test(cmd) && /wrud|cli\.mjs/.test(cmd);
 
 export async function runInstallHooks(
   args: string[],
   cliPath: string,
 ): Promise<number> {
-  const scope = args.includes("--project") ? "project" : "user"; // default: user (all projects)
-  const agent = "claude-code"; // only supported host today; flag reserved for future
+  const scope: "user" | "project" = args.includes("--project")
+    ? "project"
+    : "user";
+  const agentArg = args[args.indexOf("--agent") + 1];
+  const agentId =
+    args.includes("--agent") && agentArg ? agentArg : defaultProviderId;
+  if (!providerIds.includes(agentId)) {
+    console.error(
+      `Unknown agent '${agentId}'. Supported: ${providerIds.join(", ")}.`,
+    );
+    return 1;
+  }
+  const provider = getProvider(agentId);
+  const settingsPath = provider.settingsPath(scope);
+  const otherPath = provider.settingsPath(
+    scope === "project" ? "user" : "project",
+  );
 
-  const userSettings = join(homedir(), ".claude", "settings.json");
-  const projectSettings = join(process.cwd(), ".claude", "settings.json");
-  const settingsPath = scope === "project" ? projectSettings : userSettings;
-  const otherPath = scope === "project" ? userSettings : projectSettings;
-
-  console.log(`wrud install-hooks -> ${agent} @ ${scope} level`);
+  console.log(`wrud install-hooks -> ${provider.label} @ ${scope} level`);
   console.log(`  settings: ${settingsPath}`);
 
   // 1) mint / reuse a dedicated ingest-only key
@@ -45,44 +48,24 @@ export async function runInstallHooks(
   await ensureToken(INGEST_TOKEN_FILE, "wrud-hooks-ingest", ["ingest"]);
   console.log(`  ingest key: stored 0600 at ${INGEST_TOKEN_FILE}`);
 
-  // 2) merge into settings.json (idempotent: drop any prior wrud hook entries first)
+  // 2) merge wrud's hooks into the agent's config (idempotent; format owned by the provider)
   const settings: any = existsSync(settingsPath)
     ? JSON.parse(readFileSync(settingsPath, "utf8") || "{}")
     : {};
-  settings.hooks ??= {};
-  const command = `"${process.execPath}" "${cliPath}" hook`; // + " <sub>"
-
-  for (const [event, sub] of Object.entries(EVENT_SUB)) {
-    const existing: any[] = Array.isArray(settings.hooks[event])
-      ? settings.hooks[event]
-      : [];
-    // strip our previous entries so re-running doesn't stack duplicates
-    const kept = existing
-      .map((group: any) => ({
-        ...group,
-        hooks: (group.hooks || []).filter((h: any) => !isWrudCmd(h?.command)),
-      }))
-      .filter((group: any) => (group.hooks || []).length > 0);
-    kept.push({ hooks: [{ type: "command", command: `${command} ${sub}` }] });
-    settings.hooks[event] = kept;
-  }
-
+  const cmdFor = (sub: HookSub) =>
+    `"${process.execPath}" "${cliPath}" hook ${sub} --provider ${provider.id}`;
+  provider.mergeHooks(settings, cmdFor);
   mkdirSync(dirname(settingsPath), { recursive: true });
   writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
   console.log(
-    `  wired: SessionStart/UserPromptSubmit/PostToolUse->record, Stop->flush, SessionEnd->finalize`,
+    "  wired: session start/prompt/tool -> record, agent reply -> flush, session end -> finalize",
   );
 
-  // 3) double-capture warning
+  // 3) double-capture warning (wrud hooks for this agent in the other scope)
   if (existsSync(otherPath)) {
     try {
       const other = JSON.parse(readFileSync(otherPath, "utf8") || "{}");
-      const hasWrud = Object.values(other.hooks || {}).some((groups: any) =>
-        (Array.isArray(groups) ? groups : []).some((g: any) =>
-          (g.hooks || []).some((h: any) => isWrudCmd(h?.command)),
-        ),
-      );
-      if (hasWrud)
+      if (provider.hasWrudHooks(other))
         console.log(
           `\n  WARNING: wrud hooks also exist in ${otherPath}. Both will fire and DOUBLE-capture\n    sessions in overlapping directories. Remove one scope (runtime dedupe collapses\n    identical events, but removing the duplicate is cleaner).`,
         );

@@ -85,8 +85,8 @@ export function createWrudClient(opts: WrudClientOptions) {
       );
     },
     /**
-     * Bind a handle to an EXISTING session - for cross-process integrations (e.g. the Claude
-     * Code hook) where each hook is a fresh process. Pass `startSeq` (the persisted cursor) so
+     * Bind a handle to an EXISTING session - for cross-process integrations (e.g. an agent's
+     * lifecycle hooks) where each hook is a fresh process. Pass `startSeq` (the persisted cursor) so
      * `seq` stays monotonic and the (sessionId, seq) idempotency key doesn't collide at 0.
      */
     resumeSession(sessionId: string, startSeq = 0) {

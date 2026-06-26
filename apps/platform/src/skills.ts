@@ -3,7 +3,7 @@
  * Skills/commands surface through two paths (see the capture notes), both handled here:
  *   - model-invoked: a `Skill` tool call (skill name in input) or an `mcp__*` tool (an extension)
  *   - user-invoked: a message that starts with a slash command (`/go-to-market`, `/review`, ...)
- * No Claude-specific assumptions - slash commands + Skill/MCP tools are cross-agent patterns.
+ * No agent-specific assumptions - slash commands + Skill/MCP tools are cross-agent patterns.
  */
 export interface SkillUsage {
   skills: string[]; // explicit skills (Skill tool or /slash-command)

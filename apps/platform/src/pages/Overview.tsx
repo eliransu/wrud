@@ -32,7 +32,7 @@ export default function Overview() {
     return <Spin style={{ display: "block", marginTop: 80 }} />;
 
   const modelData = data.models.map((m: any) => ({
-    name: m.model.replace("claude-", ""),
+    name: m.model,
     tokens: m.outputTokens,
   }));
   const statusData = Object.entries(data.sessions.byStatus).map(

@@ -1,14 +1,18 @@
 /**
- * claudeCliNarrator - summarize a session with the user's OWN Claude Code login (no API key)
- * by shelling out to `claude -p` in headless mode. Two safeguards:
+ * cliNarrator - summarize a session by shelling out to a local agent CLI in headless mode,
+ * using the user's existing login (no API key). The command is configurable via
+ * WRUD_NARRATOR_CMD (default `claude`, which supports `-p` + `--output-format json`). Two
+ * safeguards:
  *   - WRUD_IN_SUMMARY=1 is exported into the child so wrud's own hooks NO-OP for this nested
- *     Claude Code invocation - otherwise SessionEnd->claude->SessionEnd would loop forever.
+ *     invocation - otherwise SessionEnd -> narrator -> SessionEnd would loop forever.
  *   - a hard timeout; on any failure the caller keeps the deterministic narrative.
- * Plain `-p` (not `--bare`) keeps subscription auth so no ANTHROPIC_API_KEY is required.
+ * If the command isn't available (e.g. a host without that CLI), the caller falls back to the
+ * deterministic summary, so this stays best-effort and provider-agnostic.
  */
 import { execFile } from "node:child_process";
 
 const TIMEOUT_MS = Number(process.env.WRUD_NARRATOR_TIMEOUT_MS || 90_000);
+const CMD = process.env.WRUD_NARRATOR_CMD || "claude";
 const MODEL = process.env.WRUD_NARRATOR_MODEL || "haiku"; // cheap is plenty for a 3-sentence recap
 
 export interface NarratorInput {
@@ -16,11 +20,11 @@ export interface NarratorInput {
   userPrompt: string;
 }
 
-export function claudeCliNarrator(input: NarratorInput): Promise<string> {
+export function cliNarrator(input: NarratorInput): Promise<string> {
   const prompt = `${input.systemPrompt}\n\n${input.userPrompt}`;
   return new Promise((resolve, reject) => {
     const child = execFile(
-      "claude",
+      CMD,
       ["-p", prompt, "--model", MODEL, "--output-format", "json"],
       {
         timeout: TIMEOUT_MS,
@@ -39,7 +43,7 @@ export function claudeCliNarrator(input: NarratorInput): Promise<string> {
         }
       },
     );
-    child.on("error", reject); // e.g. `claude` not on PATH
+    child.on("error", reject); // e.g. the narrator CLI not on PATH
   });
 }
 

@@ -37,11 +37,11 @@ future work behind the same interfaces.
   <img src="docs/architecture.png" alt="wrud architecture" width="560">
 </div>
 
-Lifecycle hooks capture the session (tools, prompts, files, messages) and stream events to a
-local API. At `SessionEnd` a detached, non-blocking worker reads token/model usage from the
-transcript and writes a summary, using your Claude Code login as the LLM narrator (no API key).
-The API persists everything to local SQLite and runs the summarizer plus insight analyzers; the
-Ant Design dashboard reads it back. Source for the diagram: [`docs/architecture.mmd`](docs/architecture.mmd).
+Your agent's lifecycle hooks capture the session (tools, prompts, files, messages) and stream
+events to a local API. At session end a detached, non-blocking worker reads model/token usage and
+writes a summary via a local narrator CLI (no API key). The API persists everything to local
+SQLite and runs the summarizer plus insight analyzers; the Ant Design dashboard reads it back.
+Source for the diagram: [`docs/architecture.mmd`](docs/architecture.mmd).
 
 ---
 
@@ -91,20 +91,19 @@ Set up wrud for me - a local-first recorder for AI-agent sessions.
    model usage, cost signals, and insights.
 
 Then make my sessions record automatically:
-4. Work out which coding agent you are running inside (Claude Code, Cursor, Codex, Windsurf, ...).
-5. For Claude Code: run `npx @wrud/cli install-hooks --user`. It mints a least-privilege ingest
-   key, wires the hooks at USER level (all my projects), and self-verifies - no manual
-   settings.json editing, no token to find. Use `--project` for just this repo.
-     - A different agent -> use its equivalent hook/automation, or the SDK. If it has no hook
-       mechanism, tell me that instead of guessing.
-6. Run `npx @wrud/cli doctor` and show me the result - it proves capture works end-to-end.
+4. Work out which coding agent you are running inside, then run
+   `npx @wrud/cli install-hooks --agent <that-agent> --user` (supported agents: claude-code,
+   cursor). It mints a least-privilege ingest key, wires that agent's hooks at USER level (all my
+   projects), and self-verifies - no manual config editing, no token to find. Use `--project` for
+   just this repo. If my agent isn't supported, tell me instead of guessing.
+5. Run `npx @wrud/cli doctor` and show me the result - it proves capture works end-to-end.
    Keep my wrud token out of anything that gets committed or shared.
 ```
 
-> **user level vs project level?** Recording is about _you_, not a repo - you almost always
-> want **user level** (`~/.claude/settings.json`) so every session is captured wherever you
-> work. Use **project level** (`.claude/settings.json`, committed) only to record one
-> shared repo for a team, or `.claude/settings.local.json` to scope to one repo just for you.
+> **user level vs project level?** Recording is about _you_, not a repo - you almost always want
+> **user level** (`--user`, the agent's home config) so every session is captured wherever you
+> work. Use **project level** (`--project`, the repo's agent config) only to record one shared
+> repo for a team.
 
 ---
 
@@ -124,20 +123,27 @@ Open `http://localhost:8787`, paste your token on **Connect**, and you have:
 
 ## Record your own agent sessions
 
-### Claude Code - one command
+One command per agent. Pick yours:
 
 ```bash
-npx @wrud/cli install-hooks --user   # all your projects   (--project for just this repo)
-npx @wrud/cli doctor                 # prove capture works end-to-end
+npx @wrud/cli install-hooks --agent claude-code --user   # or --agent cursor
+npx @wrud/cli doctor                                      # prove capture works end-to-end
 ```
 
-`install-hooks` mints a **least-privilege ingest key** (stored `0600`), wires the five hooks
-into `settings.json` (user or project), warns if a duplicate set exists in the other scope, and
-self-verifies. The hooks capture prompts, tool calls **with content**, assistant responses,
-**token/model usage** (read once from the transcript), and skills/commands used. On `SessionEnd`
-a **detached, non-blocking** worker summarizes the session - using your **Claude Code login as
-the LLM narrator** (`claude -p`, no API key, recursion-guarded), falling back to a deterministic
-summary if `claude` isn't usable.
+| Agent         | Setup guide                                            |
+| ------------- | ------------------------------------------------------ |
+| Claude Code   | [`providers/claude-code.md`](providers/claude-code.md) |
+| Cursor (1.7+) | [`providers/cursor.md`](providers/cursor.md)           |
+
+`install-hooks` mints a **least-privilege ingest key** (stored `0600`), wires the agent's hooks
+into its config (user or project), warns if a duplicate set exists in the other scope, and
+self-verifies. The hooks capture prompts, tool calls **with content**, assistant responses, and
+**model/token usage**, plus skills/commands used. On session end a **detached, non-blocking**
+worker summarizes the session with a local narrator (`WRUD_NARRATOR_CMD`, default `claude -p`,
+no API key, recursion-guarded), falling back to a deterministic summary if it isn't available.
+
+> Cursor reports the model name on every hook (so model usage is captured); token/cost numbers
+> for Cursor are deferred until its transcript format is known. Claude Code captures full tokens.
 
 > Hit a 401, recorded nothing, or unsure which token/DB is in play? **`wrud doctor`** runs
 > create->append->summarize->read against the live server and prints PASS/FAIL + HTTP status - no
@@ -147,19 +153,19 @@ summary if `claude` isn't usable.
 
 Run via `npx @wrud/cli <command>`, or `npm i -g @wrud/cli` once and use the `wrud` command.
 
-| Command                                  | Does                                                                 |
-| ---------------------------------------- | -------------------------------------------------------------------- |
-| `wrud`                                   | Start the API + dashboard on one origin; attaches if already running |
-| `wrud doctor`                            | End-to-end self-test (PASS/FAIL + HTTP status, DB, token)            |
-| `wrud install-hooks [--user\|--project]` | Mint ingest key, wire Claude Code hooks, self-verify                 |
-| `wrud hook <record\|flush\|finalize>`    | Hook handlers (invoked by `settings.json`)                           |
+| Command                                                 | Does                                                                 |
+| ------------------------------------------------------- | -------------------------------------------------------------------- |
+| `wrud`                                                  | Start the API + dashboard on one origin; attaches if already running |
+| `wrud doctor`                                           | End-to-end self-test (PASS/FAIL + HTTP status, DB, token)            |
+| `wrud install-hooks [--agent <id>] [--user\|--project]` | Mint ingest key, wire that agent's hooks, self-verify                |
+| `wrud hook <record\|flush\|finalize> [--provider <id>]` | Hook handlers (invoked by the agent's config)                        |
 
-### Anything else
+### Adding another agent
 
-Any agent with lifecycle hooks (Cursor, Codex, ...) or that you can wrap with the
-[`@wrud/sdk`](packages/sdk/README.md) client can feed wrud - the model-tier classifier and
-skill/command detection are provider-agnostic. `examples/cc-hooks/` and
-`examples/claude-code-hook.ts` remain as from-source references.
+Any agent with lifecycle hooks, or that you can wrap with the
+[`@wrud/sdk`](packages/sdk/README.md) client, can feed wrud. Adding one is a single entry in the
+provider registry (`packages/cli/src/providers.ts`: config path, event map, payload map) plus a
+`providers/<id>.md` doc - no changes to the API, SDK, or dashboard.
 
 ---
 
@@ -177,7 +183,7 @@ const client = createWrudClient({
 
 const session = await client.startSession({
   user: { id: "u1" },
-  agent: { name: "claude-code" },
+  agent: { name: "my-agent" },
 });
 session.event({ type: "tool_call", name: "Edit", ok: true, durationMs: 12 });
 session.event({
@@ -222,10 +228,10 @@ hashes; the plaintext is shown once at creation. Browse the live spec at
 ```
 packages/shared   zod schemas + types + strategy interfaces (the contract; OpenAPI source)
 packages/server   Hono app, storage (Memory + SQLite), auth, summarizer + insights, Node entry
-packages/sdk      @wrud/sdk client + @wrud/sdk/claude-code hook adapter
-packages/cli      the published `@wrud/cli` package - `npx @wrud/cli` (one process: API + built dashboard)
+packages/sdk      @wrud/sdk client (generic, provider-agnostic)
+packages/cli      the published `@wrud/cli` package - `npx @wrud/cli`; provider registry lives here
 apps/platform     Ant Design web platform (Vite + React) - keys, sessions, insights, lessons, overview
-examples/         claude-code-hook.ts (minimal) - cc-hooks/ (full-capture integration)
+providers/        per-agent reference docs (claude-code.md, cursor.md) for the copy-to-AI prompts
 bin/wrud.mjs      dev launcher (npm run wrud) - API + Vite dashboard with hot reload, from source
 ```
 
