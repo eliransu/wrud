@@ -1,7 +1,7 @@
 import { Table } from "antd";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import { useApi } from "../hooks";
+import { useApi, LIVE_POLL_MS } from "../hooks";
 import { PageHeader, Pill, Surface } from "../ui";
 
 const STATUS_TONE: Record<string, string> = {
@@ -12,7 +12,9 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 export default function Sessions() {
-  const { data, loading } = useApi(() => api.listSessions(), []);
+  const { data, loading } = useApi(() => api.listSessions(), [], {
+    pollMs: LIVE_POLL_MS,
+  });
   return (
     <>
       <PageHeader eyebrow="Telemetry" title="Sessions" />
