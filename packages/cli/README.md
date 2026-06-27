@@ -17,16 +17,18 @@ Starts the API + dashboard on one origin (default `http://localhost:11190`), see
 Then wire your agent and verify capture end-to-end:
 
 ```bash
-npx @wrud/cli install-hooks --agent claude-code   # or: --agent cursor
+npx @wrud/cli install-hooks   # auto-detects & wires every agent you have (Claude Code, Cursor, ...)
 npx @wrud/cli doctor
 ```
+
+Restart your agent afterwards so it picks up the new hooks. (Target one agent with `--agent claude-code` / `--agent cursor`.)
 
 ## Commands
 
 | Command                                                                | What it does                                                                                                                                                                                                                             |
 | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `wrud`                                                                 | Start the server + dashboard (one origin). Attaches if already running.                                                                                                                                                                  |
-| `wrud install-hooks [--agent claude-code\|cursor] [--user\|--project]` | Wire that agent's hooks, mint a least-privilege ingest key, self-verify.                                                                                                                                                                 |
+| `wrud install-hooks [--agent claude-code\|cursor] [--user\|--project]` | Wire your hooks + mint a least-privilege ingest key + self-verify. No `--agent` **auto-detects and wires every installed agent**; `--agent <id>` targets one.                                                                            |
 | `wrud doctor`                                                          | Prove the capture path works end-to-end (PASS/FAIL + HTTP status).                                                                                                                                                                       |
 | `wrud cleanup` (alias `uninstall`)                                     | Remove everything wrud installed — `~/.wrud` (db, tokens, log), temp session buffers, and wrud's hook entries in every agent's settings (user + project). Edits shared config surgically; `--dry-run` previews; confirms unless `--yes`. |
 

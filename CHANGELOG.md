@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.1] - 2026-06-27
+
+### Fixed
+
+- **Cursor sessions now record.** The recorder opened the server-side session only on `session_start`, but Cursor doesn't fire that before the first prompt the way Claude Code does - so Cursor prompts were buffered locally and never opened a session (`flush: no session id yet - session start may have failed`). Sessions are now created **lazily on the first hook event of any kind**, and a failed create releases its claim so the next event retries.
+
+### Added
+
+- **`install-hooks` auto-detects installed agents.** With no `--agent`, it now wires **every** agent present on the machine in one run (`~/.claude` -> Claude Code, `~/.cursor` -> Cursor); `--agent <id>` still targets just one. The double-capture warning no longer fires spuriously when run from `$HOME` (where user and project scope resolve to the same file).
+
+---
+
 ## [0.4.0] - 2026-06-26
 
 ### Added

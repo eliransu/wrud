@@ -5,6 +5,7 @@
  * Everything else in wrud is provider-agnostic. Add an agent by adding an entry here plus a
  * providers/<id>.md doc - no other code changes.
  */
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -49,6 +50,9 @@ export interface ProviderSpec {
   removeHooks(settings: any): boolean;
   /** Does this settings object already contain wrud hooks? (cross-scope dedupe warning) */
   hasWrudHooks(settings: any): boolean;
+  /** Is this agent present on the machine? Drives `install-hooks` auto-detect (no --agent ->
+   * wire every agent you actually have). A cheap config-dir check, not a deep probe. */
+  isInstalled(): boolean;
   /** Map a raw hook payload (stdin JSON) to the normalized shape. */
   normalize(payload: any): NormalizedHook;
 }
@@ -118,6 +122,7 @@ const claudeCode: ProviderSpec = {
         (g?.hooks || []).some((h: any) => isWrudCmd(h?.command)),
       ),
     ),
+  isInstalled: () => existsSync(join(homedir(), ".claude")),
   normalize(p) {
     const sid = String(p.session_id ?? "");
     switch (p.hook_event_name) {
@@ -213,6 +218,7 @@ const cursor: ProviderSpec = {
     Object.values(settings?.hooks || {}).some((arr: any) =>
       (Array.isArray(arr) ? arr : []).some((h: any) => isWrudCmd(h?.command)),
     ),
+  isInstalled: () => existsSync(join(homedir(), ".cursor")),
   normalize(p) {
     const sid = String(p.conversation_id ?? p.session_id ?? "");
     const model = p.model ?? p.model_id;
@@ -277,4 +283,9 @@ export const defaultProviderId = claudeCode.id;
 /** Look up a provider by id; defaults to the default provider (back-compat for hooks installed without --provider). */
 export function getProvider(id: string | undefined): ProviderSpec {
   return (id && REGISTRY[id]) || claudeCode;
+}
+
+/** Ids of agents actually present on this machine - what `install-hooks` wires when no --agent is given. */
+export function installedProviderIds(): string[] {
+  return providerIds.filter((id) => getProvider(id).isInstalled());
 }

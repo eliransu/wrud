@@ -23,7 +23,7 @@ Usage:
   wrud                              start the server + dashboard (one origin)
   wrud doctor                       verify capture works end-to-end
   wrud install-hooks [--agent <${providerIds.join("|")}>] [--user|--project]
-                                    wire that agent's hooks, mint an ingest key, self-verify
+                                    wire your installed agents (auto-detected; --agent picks one)
   wrud cleanup [--dry-run] [--yes]  remove everything wrud installed (data, tokens, hooks); undo install
   wrud hook <record|flush|finalize> [--provider <id>]   (invoked by the agent's hook config)
 

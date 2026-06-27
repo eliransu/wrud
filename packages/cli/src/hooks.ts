@@ -81,7 +81,67 @@ const readState = (sid: string): State =>
 const writeState = (sid: string, s: State) =>
   writeFileSync(statePath(sid), JSON.stringify(s));
 
-/** session_start -> create one session; user_prompt / tool_use -> buffer content. */
+/** Lazily open ONE server session for this agent-session id. The FIRST hook of ANY kind to
+ * arrive creates it - we can't rely on session_start, because Cursor doesn't fire it before the
+ * first prompt (Claude Code does). Cross-process safe: whoever wins the exclusive state-file
+ * write owns the POST; on failure it releases the claim so the next hook retries. */
+async function ensureSession(
+  h: NormalizedHook,
+  provider: ProviderSpec,
+): Promise<void> {
+  const sid = sanitize(h.sessionId);
+  if (readState(sid).wrudSessionId) return; // session already open
+
+  let owner = false;
+  try {
+    writeFileSync(
+      statePath(sid),
+      JSON.stringify({
+        flushed: 0,
+        providerId: provider.id,
+        agentName: provider.agentName,
+        model: h.model,
+      }),
+      { flag: "wx" },
+    );
+    owner = true;
+  } catch {
+    owner = false; // another hook process is creating it
+  }
+  if (!owner) return;
+
+  const token = resolveIngestToken();
+  if (!token)
+    return log(
+      "session start: no ingest token - run `wrud install-hooks`. Buffering locally only.",
+    );
+  const res = await http("POST", "/v1/sessions", token, {
+    user: { id: process.env.USER || "user" },
+    agent: { name: provider.agentName },
+    runtime: { os: process.platform, cwd: h.cwd || "" },
+    metadata: { agentSession: sid, provider: provider.id },
+  });
+  if (res.ok && res.json?.sessionId) {
+    const st = readState(sid);
+    writeState(sid, {
+      ...st,
+      wrudSessionId: res.json.sessionId,
+      startedAt: res.json.startedAt,
+      assistantTurns: st.assistantTurns || 0,
+    });
+  } else {
+    log(
+      `session start: create FAILED (HTTP ${res.status}${res.error ? " " + res.error : ""}) at ${BASE} - check token scope (needs ingest). Run \`wrud doctor\`.`,
+    );
+    try {
+      rmSync(statePath(sid)); // release the claim so the next hook retries
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** Buffer one event's content, then make sure a server session is open for it (lazy create). */
 async function record(
   h: NormalizedHook,
   provider: ProviderSpec,
@@ -89,61 +149,11 @@ async function record(
   const sid = sanitize(h.sessionId);
   mkdirSync(dir, { recursive: true });
 
-  if (h.kind === "session_start") {
-    // Single-session dedupe: the FIRST layer to atomically create the state file owns creation.
-    let owner = false;
-    try {
-      writeFileSync(
-        statePath(sid),
-        JSON.stringify({
-          flushed: 0,
-          providerId: provider.id,
-          agentName: provider.agentName,
-          model: h.model,
-        }),
-        { flag: "wx" },
-      );
-      owner = true;
-    } catch {
-      owner = false;
-    }
-    appendFileSync(
-      bufPath(sid),
-      JSON.stringify({ t: Date.now(), kind: "start", cwd: h.cwd || "" }) + "\n",
-    );
-    if (!owner) return;
-
-    const token = resolveIngestToken();
-    if (!token)
-      return log(
-        "session start: no ingest token - run `wrud install-hooks`. Buffering locally only.",
-      );
-    const res = await http("POST", "/v1/sessions", token, {
-      user: { id: process.env.USER || "user" },
-      agent: { name: provider.agentName },
-      runtime: { os: process.platform, cwd: h.cwd || "" },
-      metadata: { agentSession: sid, provider: provider.id },
-    });
-    if (res.ok && res.json?.sessionId) {
-      writeState(sid, {
-        wrudSessionId: res.json.sessionId,
-        startedAt: res.json.startedAt,
-        flushed: 0,
-        providerId: provider.id,
-        agentName: provider.agentName,
-        model: h.model,
-        assistantTurns: 0,
-      });
-    } else {
-      log(
-        `session start: create FAILED (HTTP ${res.status}${res.error ? " " + res.error : ""}) at ${BASE} - check token scope (needs ingest). Run \`wrud doctor\`.`,
-      );
-    }
-    return;
-  }
-
   const rec: any = { t: Date.now() };
-  if (h.kind === "tool_use") {
+  if (h.kind === "session_start") {
+    rec.kind = "start";
+    rec.cwd = h.cwd || "";
+  } else if (h.kind === "tool_use") {
     rec.kind = "tool";
     rec.tool = String(h.toolName || "unknown");
     rec.ok = h.ok !== false;
@@ -155,13 +165,17 @@ async function record(
     rec.text = cap(h.prompt);
     rec.chars = String(h.prompt || "").length;
   } else {
-    return;
+    return; // ignore
   }
   appendFileSync(bufPath(sid), JSON.stringify(rec) + "\n");
+
+  await ensureSession(h, provider);
+
   if (h.model) {
     // remember the model the agent reported, for finalize when there's no token transcript
     const st = readState(sid);
-    if (!st.model) writeState(sid, { ...st, model: h.model });
+    if (st.wrudSessionId && !st.model)
+      writeState(sid, { ...st, model: h.model });
   }
 }
 
