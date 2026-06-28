@@ -141,6 +141,45 @@ async function ensureSession(
   }
 }
 
+/** Post buffered events not yet sent to the open session. Shared by record (incremental) and
+ * flush, so capture no longer depends on Stop/SessionEnd ever firing - the failure that left
+ * "session created, no messages" on agents (or crashes) that never reach those hooks.
+ * ponytail: best-effort dedupe via state.flushed + deterministic event ids; two records racing
+ * could re-send a slice (harmless if the server upserts by id). Per-session lock if it matters. */
+async function postBuffered(sid: string, token: string): Promise<void> {
+  const state = readState(sid);
+  if (!state.wrudSessionId || !existsSync(bufPath(sid))) return;
+  const lines = readFileSync(bufPath(sid), "utf8")
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
+  const events = bufferToEvents(lines).map((d, i) => ({
+    id: `${state.wrudSessionId}-${i}`,
+    sessionId: state.wrudSessionId,
+    seq: i,
+    timestamp: new Date(d.t || Date.now()).toISOString(),
+    type: d.type,
+    payload: d.payload,
+  }));
+  const toSend = events.slice(state.flushed || 0);
+  if (!toSend.length) return;
+  const res = await http(
+    "POST",
+    `/v1/sessions/${state.wrudSessionId}/events`,
+    token,
+    { events: toSend },
+  );
+  if (res.ok) {
+    state.flushed = events.length;
+    writeState(sid, state);
+  } else {
+    log(
+      `flush: append FAILED (HTTP ${res.status}) - ${toSend.length} events not recorded.`,
+    );
+  }
+}
+
 /** Buffer one event's content, then make sure a server session is open for it (lazy create). */
 async function record(
   h: NormalizedHook,
@@ -177,6 +216,10 @@ async function record(
     if (st.wrudSessionId && !st.model)
       writeState(sid, { ...st, model: h.model });
   }
+
+  // incremental flush: ship buffered events now instead of waiting for Stop/SessionEnd
+  const token = resolveIngestToken();
+  if (token) await postBuffered(sid, token);
 }
 
 /** assistant_msg -> record the reply text and flush buffered events to the open session. */
@@ -212,35 +255,9 @@ async function flush(
     state.assistantTurns = (state.assistantTurns || 0) + 1;
   }
   if (h.model && !state.model) state.model = h.model;
-
-  const lines = readFileSync(bufPath(sid), "utf8")
-    .trim()
-    .split("\n")
-    .filter(Boolean)
-    .map((l) => JSON.parse(l));
-  const events = bufferToEvents(lines).map((d, i) => ({
-    id: `${state.wrudSessionId}-${i}`,
-    sessionId: state.wrudSessionId,
-    seq: i,
-    timestamp: new Date(d.t || Date.now()).toISOString(),
-    type: d.type,
-    payload: d.payload,
-  }));
-  const toSend = events.slice(state.flushed || 0);
-  if (toSend.length) {
-    const res = await http(
-      "POST",
-      `/v1/sessions/${state.wrudSessionId}/events`,
-      token,
-      { events: toSend },
-    );
-    if (res.ok) state.flushed = events.length;
-    else
-      log(
-        `flush: append FAILED (HTTP ${res.status}) - ${toSend.length} events not recorded.`,
-      );
-  }
   writeState(sid, state);
+
+  await postBuffered(sid, token);
 }
 
 /** session_end -> detach a worker and return IMMEDIATELY so closing the conversation never blocks. */

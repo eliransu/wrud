@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.2] - 2026-06-28
+
+### Fixed
+
+- **Sessions no longer record empty.** Events were buffered locally and only POSTed on the `Stop` / `SessionEnd` hooks, so any session where those didn't fire (some desktop flows, a killed session, or a server restart between `SessionStart` and `Stop`) appeared created-but-empty. `record` now posts buffered events incrementally - messages and tool calls land as they happen, and capture no longer depends on `Stop`/`SessionEnd`.
+
+---
+
 ## [0.4.1] - 2026-06-27
 
 ### Fixed
