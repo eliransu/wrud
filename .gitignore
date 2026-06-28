@@ -23,8 +23,4 @@ docs/gtm/
 # npm auth (GitHub Packages token) — must never be committed
 .npmrc
 
-# Docs site (website/ = Docusaurus) build artifacts + Vercel link
-website/build/
-website/.docusaurus/
-website/screenshots/
 .vercel
