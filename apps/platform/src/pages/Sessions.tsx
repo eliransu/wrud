@@ -1,8 +1,10 @@
-import { Table } from "antd";
+import { useEffect, useMemo, useState } from "react";
+import { Table, Input, Select, DatePicker, Button, message } from "antd";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import { useApi, LIVE_POLL_MS } from "../hooks";
 import { PageHeader, Pill, Surface } from "../ui";
+
+const { RangePicker } = DatePicker;
 
 const STATUS_TONE: Record<string, string> = {
   open: "cyan",
@@ -11,20 +13,129 @@ const STATUS_TONE: Record<string, string> = {
   abandoned: "red",
 };
 
+type Filters = {
+  user?: string;
+  agent?: string;
+  model?: string;
+  from?: string;
+  to?: string;
+};
+
+const PAGE = 25;
+
 export default function Sessions() {
-  const { data, loading } = useApi(() => api.listSessions(), [], {
-    pollMs: LIVE_POLL_MS,
-  });
+  const [filters, setFilters] = useState<Filters>({});
+  const [items, setItems] = useState<any[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [more, setMore] = useState(false);
+
+  const params = (extra: Record<string, string> = {}) => {
+    const p: Record<string, string> = { limit: String(PAGE) };
+    for (const [k, v] of Object.entries(filters)) if (v) p[k] = v;
+    return { ...p, ...extra };
+  };
+
+  // (re)load page 1 whenever filters change
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    api
+      .listSessions(params())
+      .then((d) => {
+        if (!alive) return;
+        setItems(d.items ?? []);
+        setCursor(d.nextCursor ?? null);
+      })
+      .catch((e) => message.error(e instanceof Error ? e.message : String(e)))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
+
+  const loadMore = () => {
+    if (!cursor) return;
+    setMore(true);
+    api
+      .listSessions(params({ cursor }))
+      .then((d) => {
+        setItems((prev) => [...prev, ...(d.items ?? [])]);
+        setCursor(d.nextCursor ?? null);
+      })
+      .catch((e) => message.error(e instanceof Error ? e.message : String(e)))
+      .finally(() => setMore(false));
+  };
+
+  // option lists derived from what's loaded (server still does the filtering)
+  const agentOpts = useMemo(
+    () => [...new Set(items.map((s) => s.agent?.name).filter(Boolean))],
+    [items],
+  );
+  const modelOpts = useMemo(
+    () => [...new Set(items.flatMap((s) => s.models ?? []).filter(Boolean))],
+    [items],
+  );
+  const set = (patch: Filters) => setFilters((f) => ({ ...f, ...patch }));
+
   return (
     <>
       <PageHeader eyebrow="Telemetry" title="Sessions" />
+
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 10,
+          marginBottom: 16,
+        }}
+      >
+        <Input.Search
+          placeholder="user"
+          allowClear
+          style={{ width: 160 }}
+          defaultValue={filters.user}
+          onSearch={(v) => set({ user: v || undefined })}
+        />
+        <Select
+          placeholder="agent"
+          allowClear
+          style={{ width: 160 }}
+          value={filters.agent}
+          onChange={(v) => set({ agent: v || undefined })}
+          options={[
+            "claude-code",
+            "cursor",
+            ...agentOpts.filter((a) => a !== "claude-code" && a !== "cursor"),
+          ].map((a) => ({ value: a, label: a }))}
+        />
+        <Select
+          placeholder="model"
+          allowClear
+          showSearch
+          style={{ width: 200 }}
+          value={filters.model}
+          onChange={(v) => set({ model: v || undefined })}
+          options={modelOpts.map((m) => ({ value: m, label: m }))}
+        />
+        <RangePicker
+          onChange={(d) =>
+            set({
+              from: d?.[0]?.startOf("day").toISOString(),
+              to: d?.[1]?.endOf("day").toISOString(),
+            })
+          }
+        />
+      </div>
+
       <Surface>
         <Table
           rowKey="id"
           loading={loading}
-          dataSource={data?.items ?? []}
-          pagination={{ pageSize: 12, hideOnSinglePage: true }}
-          locale={{ emptyText: "No sessions yet" }}
+          dataSource={items}
+          pagination={false}
+          locale={{ emptyText: "No sessions match" }}
           columns={[
             {
               title: "Session",
@@ -43,29 +154,7 @@ export default function Sessions() {
               title: "User",
               dataIndex: ["user", "id"],
               render: (u: string) => (
-                <span
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 6,
-                      display: "grid",
-                      placeItems: "center",
-                      background: "rgba(182,242,78,0.14)",
-                      color: "var(--signal)",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      fontFamily: "var(--mono)",
-                    }}
-                  >
-                    {(u ?? "?").slice(0, 2).toUpperCase()}
-                  </span>
+                <span className="wd-mono" style={{ fontSize: 13 }}>
                   {u}
                 </span>
               ),
@@ -112,6 +201,16 @@ export default function Sessions() {
               },
             },
             {
+              title: "Events",
+              dataIndex: "events",
+              align: "right" as const,
+              render: (n: number) => (
+                <span className="wd-mono" style={{ fontSize: 13 }}>
+                  {(n ?? 0).toLocaleString()}
+                </span>
+              ),
+            },
+            {
               title: "Tokens (in / out)",
               key: "tokens",
               render: (_: unknown, r: any) => {
@@ -149,6 +248,13 @@ export default function Sessions() {
             },
           ]}
         />
+        {cursor && (
+          <div style={{ textAlign: "center", marginTop: 16 }}>
+            <Button onClick={loadMore} loading={more}>
+              Load more
+            </Button>
+          </div>
+        )}
       </Surface>
     </>
   );

@@ -170,28 +170,31 @@ sessionRoutes.get("/sessions", requireScope("read"), async (c) => {
       ? (q.status as SessionStatus)
       : undefined;
   const page = await storage.listSessions({
-    user: q.user,
+    user: q.user || undefined,
+    agent: q.agent || undefined,
+    model: q.model || undefined,
     status,
-    from: q.from,
-    to: q.to,
+    from: q.from || undefined,
+    to: q.to || undefined,
     limit: clampLimit(q.limit, 200),
     cursor: q.cursor ?? null,
   });
-  // Enrich each row with the model(s) used + total token usage from its summary.
-  const items = await Promise.all(
-    page.items.map(async (s) => {
-      const summary = await storage.getSummary(s.id);
-      const models = (summary?.stats.models ?? []).map((m) => m.model);
-      const tokens = (summary?.stats.models ?? []).reduce(
-        (a, m) => ({
-          input: a.input + (m.inputTokens || 0),
-          output: a.output + (m.outputTokens || 0),
-        }),
-        { input: 0, output: 0 },
-      );
-      return { ...sessionPublicSchema.parse(s), models, tokens };
-    }),
-  );
+  // Enrich each row from its events (model_use) - shows the model live, not only post-summary.
+  const stats = await storage.sessionStats(page.items.map((s) => s.id));
+  const items = page.items.map((s) => {
+    const st = stats[s.id] ?? {
+      events: 0,
+      models: [],
+      inputTokens: 0,
+      outputTokens: 0,
+    };
+    return {
+      ...sessionPublicSchema.parse(s),
+      models: st.models,
+      tokens: { input: st.inputTokens, output: st.outputTokens },
+      events: st.events,
+    };
+  });
   return c.json({ items, nextCursor: page.nextCursor }, 200);
 });
 

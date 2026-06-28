@@ -11,6 +11,7 @@ import type {
   ApiKey,
   Lesson,
   SessionFilter,
+  SessionStats,
   LessonFilter,
   Paginated,
   Page,
@@ -34,8 +35,14 @@ export class MemoryStorageAdapter implements StorageAdapter {
   }
 
   async listSessions(f: SessionFilter): Promise<Paginated<Session>> {
+    const hasModel = (id: string, model: string) =>
+      [...(this.events.get(id)?.values() ?? [])].some(
+        (e) => e.type === "model_use" && (e.payload as any)?.model === model,
+      );
     const items = [...this.sessions.values()]
       .filter((s) => (f.user ? s.user.id === f.user : true))
+      .filter((s) => (f.agent ? s.agent.name === f.agent : true))
+      .filter((s) => (f.model ? hasModel(s.id, f.model) : true))
       .filter((s) => (f.status ? s.status === f.status : true))
       .filter((s) => (f.from ? s.createdAt >= f.from : true))
       .filter((s) => (f.to ? s.createdAt <= f.to : true))
@@ -46,6 +53,29 @@ export class MemoryStorageAdapter implements StorageAdapter {
     const nextCursor =
       start + limit < items.length ? slice[slice.length - 1]!.id : null;
     return { items: slice.map(clone), nextCursor };
+  }
+
+  async sessionStats(ids: string[]): Promise<Record<string, SessionStats>> {
+    const out: Record<string, SessionStats> = {};
+    for (const id of ids) {
+      const evs = [...(this.events.get(id)?.values() ?? [])];
+      const stat: SessionStats = {
+        events: evs.length,
+        models: [],
+        inputTokens: 0,
+        outputTokens: 0,
+      };
+      for (const e of evs) {
+        if (e.type !== "model_use") continue;
+        const p = e.payload as any;
+        if (p?.model && !stat.models.includes(p.model))
+          stat.models.push(p.model);
+        stat.inputTokens += p?.inputTokens || 0;
+        stat.outputTokens += p?.outputTokens || 0;
+      }
+      out[id] = stat;
+    }
+    return out;
   }
 
   async setSessionStatus(

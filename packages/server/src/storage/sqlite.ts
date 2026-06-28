@@ -21,6 +21,7 @@ import type {
   ApiKey,
   Lesson,
   SessionFilter,
+  SessionStats,
   LessonFilter,
   Paginated,
   Page,
@@ -81,6 +82,16 @@ export class SqliteStorageAdapter implements StorageAdapter {
       where.push("user_id = @user");
       params.user = f.user;
     }
+    if (f.agent) {
+      where.push("json_extract(agent_json, '$.name') = @agent");
+      params.agent = f.agent;
+    }
+    if (f.model) {
+      where.push(
+        "id IN (SELECT session_id FROM events WHERE type = 'model_use' AND json_extract(payload_json, '$.model') = @model)",
+      );
+      params.model = f.model;
+    }
     if (f.status) {
       where.push("status = @status");
       params.status = f.status;
@@ -108,6 +119,34 @@ export class SqliteStorageAdapter implements StorageAdapter {
     const nextCursor =
       start + limit < rows.length ? slice[slice.length - 1]!.id : null;
     return { items: slice, nextCursor };
+  }
+
+  async sessionStats(ids: string[]): Promise<Record<string, SessionStats>> {
+    const out: Record<string, SessionStats> = {};
+    if (!ids.length) return out;
+    for (const id of ids)
+      out[id] = { events: 0, models: [], inputTokens: 0, outputTokens: 0 };
+    const ph = ids.map(() => "?").join(",");
+    for (const r of this.db
+      .prepare(
+        `SELECT session_id, COUNT(*) n FROM events WHERE session_id IN (${ph}) GROUP BY session_id`,
+      )
+      .all(...ids) as any[]) {
+      if (out[r.session_id]) out[r.session_id]!.events = r.n;
+    }
+    for (const r of this.db
+      .prepare(
+        `SELECT session_id, payload_json FROM events WHERE type = 'model_use' AND session_id IN (${ph})`,
+      )
+      .all(...ids) as any[]) {
+      const s = out[r.session_id];
+      if (!s) continue;
+      const p = JSON.parse(r.payload_json);
+      if (p.model && !s.models.includes(p.model)) s.models.push(p.model);
+      s.inputTokens += p.inputTokens || 0;
+      s.outputTokens += p.outputTokens || 0;
+    }
+    return out;
   }
 
   async setSessionStatus(

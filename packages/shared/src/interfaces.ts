@@ -28,11 +28,21 @@ export interface Paginated<T> {
 
 export interface SessionFilter {
   user?: string;
+  agent?: string;
+  model?: string;
   status?: SessionStatus;
   from?: string;
   to?: string;
   limit?: number;
   cursor?: string | null;
+}
+
+/** Per-session rollup derived from a session's events (model_use), for the sessions list. */
+export interface SessionStats {
+  events: number;
+  models: string[];
+  inputTokens: number;
+  outputTokens: number;
 }
 
 export interface LessonFilter {
@@ -46,6 +56,8 @@ export interface StorageAdapter {
   createSession(s: Session): Promise<void>;
   getSession(id: string): Promise<Session | undefined>;
   listSessions(f: SessionFilter): Promise<Paginated<Session>>;
+  /** Event count + model/token rollup per session id, derived from events (for the list view). */
+  sessionStats(ids: string[]): Promise<Record<string, SessionStats>>;
   setSessionStatus(
     id: string,
     status: SessionStatus,

@@ -29,7 +29,12 @@ async function req(path: string, init?: RequestInit): Promise<any> {
 
 export const api = {
   overview: () => req("/v1/stats/overview", { headers: headers() }),
-  listSessions: () => req("/v1/sessions", { headers: headers() }),
+  listSessions: (params: Record<string, string> = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v != null && v !== ""),
+    ).toString();
+    return req(`/v1/sessions${qs ? "?" + qs : ""}`, { headers: headers() });
+  },
   getSession: (id: string) => req(`/v1/sessions/${id}`, { headers: headers() }),
   listEvents: (id: string) =>
     req(`/v1/sessions/${id}/events`, { headers: headers() }),

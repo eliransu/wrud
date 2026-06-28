@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.3] - 2026-06-28
+
+### Added
+
+- **Sessions filtering + pagination (server-side).** The sessions list and `GET /v1/sessions` now filter by **user, agent, model, and date range** and page with a cursor. New `sessionStats(ids)` rolls up event count, models, and tokens from a session's events. The Sessions page gets a filter bar, an **Events** column, and a "Load more" button.
+
+### Fixed
+
+- **Model column showed nothing until a session ended.** The list derived model(s)/tokens only from the post-finalize summary; it now derives them from the session's `model_use` **events**, so the model appears as soon as it's captured (live for Cursor, at finalize for Claude Code).
+
+---
+
 ## [0.4.2] - 2026-06-28
 
 ### Fixed
