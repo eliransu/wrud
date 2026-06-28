@@ -1,6 +1,9 @@
 <div align="center">
 
-<img src="docs/assets/wrud-mascot.png" alt="wrud mascot" width="130" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/wrud-mascot-light.png" />
+  <img src="docs/assets/wrud-mascot.png" alt="wrud mascot" width="130" />
+</picture>
 
 # wrud
 
