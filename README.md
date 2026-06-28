@@ -1,10 +1,8 @@
 <div align="center">
 
-# wrud - _What R U Doing_
+# wrud
 
-**A local-first, API-first recorder for AI-agent sessions.**
-See what your coding agent actually did - every tool, model, file, and error - turned into a
-queryable session with a summary, cost signals, and lessons.
+**What R U Doing** - a local-first, open-source recorder for AI coding-agent sessions.
 
 [![npm](https://img.shields.io/npm/v/@wrud/cli.svg)](https://www.npmjs.com/package/@wrud/cli)
 [![license: MIT](https://img.shields.io/badge/license-MIT-b6f24e.svg)](LICENSE)
@@ -16,44 +14,27 @@ queryable session with a summary, cost signals, and lessons.
 
 ---
 
-wrud records the lifecycle of an AI-agent session (Claude Code, Cursor, Codex, your own SDK
-runs) and turns it into a queryable **Session** entity with a deterministic summary. It exists
-to answer four questions:
+Your agent runs for an hour, changes dozens of files, picks its own model, makes the same
+mistake it made last Tuesday - then the session scrolls off and is gone. wrud records it.
 
-1. **Understand the session** - what did the agent do, in what order, and how did it end?
-2. **Right-size the model** - was a frontier model used for a one-line rename? Surface it.
-3. **Teach the agent** - turn recurring mistakes into _lessons_ you feed back as memory.
-4. **See it across a team/org** - roll every session up into one overview.
+Every session is captured via the agent's own lifecycle hooks and written to a local SQLite
+file: tools called, prompts submitted, file edits made, models used, tokens consumed per model,
+and assistant responses. At session end a detached background worker reads the transcript and
+writes a plain-language recap. Recurring patterns across sessions become **lessons** you can
+feed back as agent memory.
 
-Everything runs on your machine: a local Node server and a local SQLite file. **No cloud
-account, no telemetry leaving your box.** Hosted adapters (Postgres/Cloudflare) are optional
-future work behind the same interfaces.
+**No cloud account. No telemetry. Nothing leaves your machine.**
 
 ---
 
-## How it works
-
-<div align="center">
-  <img src="docs/architecture.png" alt="wrud architecture" width="560">
-</div>
-
-Your agent's lifecycle hooks capture the session (tools, prompts, files, messages) and stream
-events to a local API. At session end a detached, non-blocking worker reads model/token usage and
-writes a summary via a local narrator CLI (no API key). The API persists everything to local
-SQLite and runs the summarizer plus insight analyzers; the Ant Design dashboard reads it back.
-Source for the diagram: [`docs/architecture.mmd`](docs/architecture.mmd).
-
----
-
-## Install and run
+## Quickstart
 
 ```bash
 npx @wrud/cli
 ```
 
-That's it - no clone, no token, no cloud account. It starts the API **and** dashboard on one
-port (`http://localhost:11190`), seeds a local API key, opens your browser, and prints the
-token to paste on the **Connect** screen:
+Starts the API and dashboard on one origin (`http://localhost:11190`), seeds a local API key,
+opens your browser, and prints a token to paste on the Connect screen:
 
 ```
   +------------------------------------------------------------------+
@@ -69,111 +50,144 @@ token to paste on the **Connect** screen:
    Ctrl+C to stop.
 ```
 
-State lives in `~/.wrud` and the token is reused across runs. Prefer a global command?
-`npm i -g @wrud/cli` gives you `wrud`.
-
----
-
-## Or: copy this to your AI assistant
-
-Paste this block into Claude Code, Cursor, Codex, or any coding agent. It gets wrud running,
-hands you your token, **and wires that agent's own lifecycle hooks so your sessions get
-recorded** - adapting to whichever agent is reading it.
-
-```text
-Set up wrud for me - a local-first recorder for AI-agent sessions.
-
-1. Run `npx @wrud/cli` in the BACKGROUND (it's a long-running server - don't block on it).
-2. Read its output. When you see the "wrud is running" banner, tell me the `wrud_sk_local_...`
-   token it printed and confirm http://localhost:11190 is reachable (GET /health -> {"ok":true}).
-   It opens the dashboard in my browser automatically; if it didn't, give me the URL.
-3. Tell me to paste that token on the dashboard's Connect screen - then I can see my sessions,
-   model usage, cost signals, and insights.
-
-Then make my sessions record automatically:
-4. Work out which coding agent you are running inside, then run
-   `npx @wrud/cli install-hooks --agent <that-agent> --user` (supported agents: claude-code,
-   cursor). It mints a least-privilege ingest key, wires that agent's hooks at USER level (all my
-   projects), and self-verifies - no manual config editing, no token to find. Use `--project` for
-   just this repo. If my agent isn't supported, tell me instead of guessing.
-5. Run `npx @wrud/cli doctor` and show me the result - it proves capture works end-to-end.
-   Keep my wrud token out of anything that gets committed or shared.
-```
-
-> **user level vs project level?** Recording is about _you_, not a repo - you almost always want
-> **user level** (`--user`, the agent's home config) so every session is captured wherever you
-> work. Use **project level** (`--project`, the repo's agent config) only to record one shared
-> repo for a team.
-
----
-
-## What you get in the dashboard
-
-Open `http://localhost:11190`, paste your token on **Connect**, and you have:
-
-| Section      | What it shows                                                                         |
-| ------------ | ------------------------------------------------------------------------------------- |
-| **Overview** | Org rollup - session counts, per-model token usage, insight + lesson totals           |
-| **Sessions** | Table with per-session input/output tokens; click in for the full detail view         |
-| **Session**  | Narrative summary, stats, models, **skills & commands used**, signals, full event log |
-| **API Keys** | Generate keys (secret shown once), list, revoke - scoped `ingest` / `read` / `admin`  |
-| **Lessons**  | Memory-teaching guidance derived from insights across sessions                        |
-
----
-
-## Record your own agent sessions
-
-One command per agent. Pick yours:
+Then wire your agent and verify the capture path:
 
 ```bash
-npx @wrud/cli install-hooks --agent claude-code --user   # or --agent cursor
-npx @wrud/cli doctor                                      # prove capture works end-to-end
+npx @wrud/cli install-hooks   # auto-detects every installed agent and wires them all
+npx @wrud/cli doctor          # end-to-end self-test: PASS/FAIL + HTTP status
 ```
 
-| Agent         | Setup guide                                            |
-| ------------- | ------------------------------------------------------ |
-| Claude Code   | [`providers/claude-code.md`](providers/claude-code.md) |
-| Cursor (1.7+) | [`providers/cursor.md`](providers/cursor.md)           |
+Restart your agent so it picks up the new hooks. That is all.
 
-`install-hooks` mints a **least-privilege ingest key** (stored `0600`), wires the agent's hooks
-into its config (user or project), warns if a duplicate set exists in the other scope, and
-self-verifies. The hooks capture prompts, tool calls **with content**, assistant responses, and
-**model/token usage**, plus skills/commands used. On session end a **detached, non-blocking**
-worker summarizes the session with a local narrator (`WRUD_NARRATOR_CMD`, default `claude -p`,
-no API key, recursion-guarded), falling back to a deterministic summary if it isn't available.
-
-> Cursor reports the model name on every hook (so model usage is captured); token/cost numbers
-> for Cursor are deferred until its transcript format is known. Claude Code captures full tokens.
-
-> Hit a 401, recorded nothing, or unsure which token/DB is in play? **`wrud doctor`** runs
-> create->append->summarize->read against the live server and prints PASS/FAIL + HTTP status - no
-> reverse-engineering. The CLI logs every hook failure to `~/.wrud/hooks.log` (never silent).
-
-### CLI reference
-
-Run via `npx @wrud/cli <command>`, or `npm i -g @wrud/cli` once and use the `wrud` command.
-
-| Command                                                 | Does                                                                 |
-| ------------------------------------------------------- | -------------------------------------------------------------------- |
-| `wrud`                                                  | Start the API + dashboard on one origin; attaches if already running |
-| `wrud doctor`                                           | End-to-end self-test (PASS/FAIL + HTTP status, DB, token)            |
-| `wrud install-hooks [--agent <id>] [--user\|--project]` | Mint ingest key, wire that agent's hooks, self-verify                |
-| `wrud hook <record\|flush\|finalize> [--provider <id>]` | Hook handlers (invoked by the agent's config)                        |
-
-### Adding another agent
-
-Any agent with lifecycle hooks, or that you can wrap with the
-[`@wrud/sdk`](packages/sdk/README.md) client, can feed wrud. Adding one is a single entry in the
-provider registry (`packages/cli/src/providers.ts`: config path, event map, payload map) plus a
-`providers/<id>.md` doc - no changes to the API, SDK, or dashboard.
+Prefer a global command? `npm i -g @wrud/cli` gives you `wrud`.
 
 ---
 
-## SDK usage
+## How it works
 
-Full reference: [`packages/sdk/README.md`](packages/sdk/README.md).
+Your agent fires its lifecycle hooks (SessionStart, PostToolUse, SessionEnd, etc.) into wrud's
+local HTTP API. The API appends events to the session record in SQLite. On session end, a
+detached non-blocking worker reads the collected transcript, runs insight analyzers (model
+right-sizing, error rate), and writes a structured summary. The Ant Design dashboard reads
+everything back from the same local API.
 
-```ts
+```
+agent lifecycle hook
+  -> POST /v1/sessions/{id}/events   (local HTTP, ingest key)
+  -> SQLite (~/.wrud/wrud.db)
+  -> summarizer worker (detached, no extra API key)
+  -> GET /v1/sessions, /v1/lessons   (dashboard)
+```
+
+Source diagram: [`docs/architecture.mmd`](docs/architecture.mmd)
+
+---
+
+## Supported agents
+
+| Agent       | Hook mechanism                  | Tokens captured                          | Setup guide                                            |
+| ----------- | ------------------------------- | ---------------------------------------- | ------------------------------------------------------ |
+| Claude Code | `~/.claude/settings.json` hooks | Full (per model)                         | [`providers/claude-code.md`](providers/claude-code.md) |
+| Cursor 1.7+ | `~/.cursor/hooks.json`          | Model name only (token numbers deferred) | [`providers/cursor.md`](providers/cursor.md)           |
+
+Adding another agent is a single entry in the provider registry
+(`packages/cli/src/providers.ts`) - config path, event map, payload normalization - plus a
+`providers/<id>.md` doc. No changes to the API, SDK, or dashboard.
+
+---
+
+## Commands
+
+Run via `npx @wrud/cli <command>` or `wrud <command>` if installed globally.
+
+| Command                                                 | What it does                                                                                                                                                                                                                     |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wrud`                                                  | Start the API + dashboard on one origin. Attaches if already running.                                                                                                                                                            |
+| `wrud install-hooks [--agent <id>] [--user\|--project]` | Auto-detect and wire every installed agent (or target one with `--agent claude-code` / `--agent cursor`). Mints a least-privilege ingest key, writes the hook config, self-verifies.                                             |
+| `wrud doctor`                                           | End-to-end self-test: create -> append -> summarize -> read against the live server. Prints PASS/FAIL and HTTP status.                                                                                                           |
+| `wrud stop`                                             | Stop the running server (on `WRUD_PORT`). Also used internally by `cleanup`.                                                                                                                                                    |
+| `wrud cleanup` (alias `uninstall`)                      | Remove everything wrud installed: `~/.wrud` (db, tokens, log), temp session buffers, wrud's hook entries in every agent's config. Edits shared config surgically. `--dry-run` previews; confirms before deleting unless `--yes`. |
+| `wrud hook <record\|flush\|finalize> [--provider <id>]` | Hook handlers called by the agent's config. Not for direct use.                                                                                                                                                                  |
+
+**User scope vs. project scope:** Recording is about you, not a repo - use `--user` (the
+default) so every session is captured wherever you work. Use `--project` only to record one
+shared repo for a team.
+
+---
+
+## Configuration
+
+| Variable              | Default                                         | Purpose                                                                                                                        |
+| --------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `WRUD_PORT`           | `11190`                                         | API/server port. The dashboard is served same-origin.                                                                          |
+| `WRUD_DB`             | `~/.wrud/wrud.db`                               | SQLite file path. `:memory:` for ephemeral.                                                                                    |
+| `WRUD_BASE_URL`       | `http://localhost:11190`                        | Base URL the hooks and CLI talk to.                                                                                            |
+| `WRUD_API_KEY`        | -                                               | Ingest token override (else read from `~/.wrud`).                                                                              |
+| `WRUD_NARRATOR_CMD`   | `claude`                                        | CLI used for the plain-language recap. Runs on your existing agent login - no extra API key.                                   |
+| `WRUD_ANTHROPIC_KEY`  | -                                               | Optional: use the Anthropic API for the recap instead of the local narrator. Falls back to the deterministic summary if unset. |
+| `WRUD_RATE_LIMIT`     | `120`                                           | Requests per rate-limit window per key.                                                                                        |
+| `WRUD_RATE_WINDOW_MS` | `60000`                                         | Rate-limit window in milliseconds.                                                                                             |
+| `WRUD_CORS_ORIGIN`    | `http://localhost:11191,http://localhost:11192` | Browser origins allowed for the platform (dev only; production is same-origin).                                                |
+
+State lives in `~/.wrud`. The token is reused across runs.
+
+---
+
+## Dashboard
+
+Open `http://localhost:11190` and paste your token on the Connect screen.
+
+| Section        | What it shows                                                                                                         |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Overview       | Rollup across all sessions: session counts, per-model token usage, insight and lesson totals.                         |
+| Sessions       | Table with per-session input/output tokens and model breakdown. Click in for the full detail view.                    |
+| Session detail | Narrative recap, per-model token usage (and cost signals for right-sizing), skills and commands used, full event log. |
+| Lessons        | Memory-teaching guidance derived from recurring patterns across sessions.                                             |
+| API Keys       | Create keys (secret shown once), list, revoke. Scopes: `ingest`, `read`, `admin`.                                     |
+
+**On tokens and cost signals:** wrud surfaces token counts per model and flags sessions where a
+high-tier model was used for a trivial task - useful for right-sizing your model choices. It
+does not compute or display dollar amounts.
+
+---
+
+## Lessons
+
+After enough sessions, `GET /v1/lessons` returns structured guidance derived from the insight
+analyzers (model right-sizing, error rate, recurring patterns). The Lessons view in the dashboard
+renders this as agent-memory text you can paste into your agent's system prompt or memory file.
+
+---
+
+## API
+
+Auth: `Authorization: Bearer <key>` or `x-api-key: <key>`. Keys are stored as SHA-256 hashes;
+the plaintext is shown once at creation. Browse the live spec at `http://localhost:11190/docs`.
+
+| Method | Path                                | Scope  | Purpose                             |
+| ------ | ----------------------------------- | ------ | ----------------------------------- |
+| POST   | `/v1/sessions`                      | ingest | Create a session                    |
+| POST   | `/v1/sessions/{id}/events`          | ingest | Append events (idempotent on `seq`) |
+| POST   | `/v1/sessions/{id}/summarize`       | ingest | Finalize and summarize              |
+| GET    | `/v1/sessions`                      | read   | List sessions with token totals     |
+| GET    | `/v1/sessions/{id}`                 | read   | Session + summary                   |
+| GET    | `/v1/sessions/{id}/events`          | read   | Session events                      |
+| GET    | `/v1/lessons`                       | read   | Memory-teaching lessons             |
+| GET    | `/v1/stats/overview`                | read   | Rollup across all sessions          |
+| POST   | `/v1/keys`                          | admin  | Create key (secret shown once)      |
+| GET    | `/v1/keys`                          | admin  | List keys (no secrets)              |
+| DELETE | `/v1/keys/{id}`                     | admin  | Revoke a key                        |
+| GET    | `/health`, `/openapi.json`, `/docs` | -      | Meta endpoints (no auth)            |
+
+---
+
+## SDK
+
+For integrating your own agent or script. Full reference: [`packages/sdk/README.md`](packages/sdk/README.md). The CLI hooks use it under the hood, so for recording an agent you just run `install-hooks`; reach for the SDK to record your own automation.
+
+> `@wrud/sdk` is not published to npm standalone yet - it ships inside `@wrud/cli` and lives in this repo. Use it from a clone for now.
+
+```typescript
 import { createWrudClient } from "@wrud/sdk";
 
 const client = createWrudClient({
@@ -185,13 +199,15 @@ const session = await client.startSession({
   user: { id: "u1" },
   agent: { name: "my-agent" },
 });
+
 session.event({ type: "tool_call", name: "Edit", ok: true, durationMs: 12 });
 session.event({
   type: "model_use",
-  model: "claude-opus-4-8",
+  model: "claude-opus-4",
   outputTokens: 320,
   task: "rename var",
 });
+
 const summary = await session.summarize(); // flushes buffered events, returns the summary
 ```
 
@@ -200,121 +216,72 @@ const summary = await session.summarize(); // flushes buffered events, returns t
 
 ---
 
-## API (v1)
+## Privacy
 
-| method | path                                | scope  | purpose                             |
-| ------ | ----------------------------------- | ------ | ----------------------------------- |
-| POST   | `/v1/sessions`                      | ingest | create a session                    |
-| POST   | `/v1/sessions/{id}/events`          | ingest | append events (idempotent on `seq`) |
-| POST   | `/v1/sessions/{id}/summarize`       | ingest | finalize + summarize                |
-| GET    | `/v1/sessions`                      | read   | list sessions (with token totals)   |
-| GET    | `/v1/sessions/{id}`                 | read   | session + summary                   |
-| GET    | `/v1/sessions/{id}/events`          | read   | session events                      |
-| GET    | `/v1/lessons`                       | read   | memory-teaching lessons             |
-| GET    | `/v1/stats/overview`                | read   | enterprise rollup across sessions   |
-| POST   | `/v1/keys`                          | admin  | create key (secret shown once)      |
-| GET    | `/v1/keys`                          | admin  | list keys (no secrets)              |
-| DELETE | `/v1/keys/{id}`                     | admin  | revoke a key                        |
-| GET    | `/health`, `/openapi.json`, `/docs` | -      | meta (no auth)                      |
+wrud is local-first by design. The server is a Node process on your machine. The database is a
+single SQLite file at `~/.wrud/wrud.db`. The summary recap runs in the background using your
+agent's existing login - no separate API key, no data sent to a third party by wrud itself.
 
-Auth: `Authorization: Bearer <key>` or `x-api-key: <key>`. Keys are stored only as SHA-256
-hashes; the plaintext is shown once at creation. Browse the live spec at
-`http://localhost:11190/docs`.
+`wrud cleanup` removes everything wrud ever wrote to disk.
 
 ---
 
-## Layout
+## Repository layout
 
 ```
-packages/shared   zod schemas + types + strategy interfaces (the contract; OpenAPI source)
-packages/server   Hono app, storage (Memory + SQLite), auth, summarizer + insights, Node entry
-packages/sdk      @wrud/sdk client (generic, provider-agnostic)
-packages/cli      the published `@wrud/cli` package - `npx @wrud/cli`; provider registry lives here
-apps/platform     Ant Design web platform (Vite + React) - keys, sessions, insights, lessons, overview
-providers/        per-agent reference docs (claude-code.md, cursor.md) for the copy-to-AI prompts
-bin/wrud.mjs      dev launcher (npm run wrud) - API + Vite dashboard with hot reload, from source
+packages/shared   Zod schemas + types + strategy interfaces (the contract; OpenAPI source)
+packages/server   Hono app, SQLite/Memory storage, auth, summarizer, insight analyzers
+packages/sdk      @wrud/sdk client - typed start/event/summarize lifecycle
+packages/cli      @wrud/cli (published) - provider registry, install-hooks, doctor, cleanup
+apps/platform     Ant Design + Vite + React dashboard
+providers/        Per-agent reference docs (claude-code.md, cursor.md)
+docs/             Architecture diagram, design notes, implementation plan
+bin/wrud.mjs      Dev launcher (npm run wrud) - API + Vite with hot reload
 ```
-
-Design + plan live in [`docs/design.md`](docs/design.md) and
-[`docs/implementation-plan.md`](docs/implementation-plan.md).
 
 ---
 
-## From source (contributors)
+## Building from source
 
 ```bash
-git clone https://github.com/eliransu/wrud.git && cd wrud && npm install
-npm run wrud                  # dev launcher: API :11190 + Vite dashboard :11191 (hot reload)
-npm -w packages/cli run build # build the publishable CLI -> packages/cli/dist (cli.mjs + web/)
+git clone https://github.com/eliransu/wrud.git
+cd wrud
+npm install
+npm run wrud          # dev: API on :11190, Vite dashboard on :11191 (hot reload)
 ```
 
-**Publishing a new version (maintainer)** - to public npm, with an npm token that can publish
-under the `@wrud` scope:
+Build the publishable CLI:
 
 ```bash
-npm version patch -w packages/cli            # bump @wrud/cli
-npm publish -w packages/cli --access public  # prepublishOnly rebuilds dist; goes to npmjs.org
+npm -w packages/cli run build   # -> packages/cli/dist/cli.mjs + dist/web/
 ```
 
-Or run the pieces individually:
+Run the test suite:
 
 ```bash
-WRUD_DB=./wrud.db npm run seed:key                                # bootstrap admin key (shown once)
-WRUD_DB=./wrud.db npm run serve                                   # API on :11190
-VITE_WRUD_API=http://localhost:11190 npm -w @wrud/platform run dev # dashboard on :11191
-```
-
-### Server env vars
-
-| var                   | default                                       | meaning                                                             |
-| --------------------- | --------------------------------------------- | ------------------------------------------------------------------- |
-| `WRUD_DB`             | `./wrud.db`                                   | SQLite file path (`:memory:` for ephemeral)                         |
-| `WRUD_PORT`           | `11190`                                        | HTTP port                                                           |
-| `WRUD_RATE_LIMIT`     | `120`                                         | requests per window per key                                         |
-| `WRUD_RATE_WINDOW_MS` | `60000`                                       | rate-limit window                                                   |
-| `WRUD_ANTHROPIC_KEY`  | _(unset)_                                     | when set, adds an LLM narrative to summaries (Haiku); safe fallback |
-| `WRUD_CORS_ORIGIN`    | `http://localhost:11191,http://localhost:11192` | comma-separated browser origins allowed for the platform            |
-
-`npx @wrud/cli` overrides: `WRUD_PORT`, `WRUD_DB` (default `~/.wrud/wrud.db`),
-`WRUD_TOKEN_FILE` (default `~/.wrud/token`). The dev launcher (`npm run wrud`) also takes
-`WRUD_WEB_PORT`.
-
----
-
-## Development
-
-```bash
-npm test                              # vitest (unit + integration, in-process)
+npm test                              # vitest: unit + integration (in-process, :memory: SQLite)
 npm run typecheck                     # tsc --noEmit, server workspace
 npm -w @wrud/platform run typecheck   # tsc --noEmit, platform
-npm run e2e                           # Playwright: boots API + platform, runs API + browser UI tests
+npm run e2e                           # Playwright: boots API + platform, API + browser UI tests
 ```
 
-## Status - all phases shipped
-
-| Phase | Scope                                                                       | Status |
-| ----- | --------------------------------------------------------------------------- | ------ |
-| 1     | API core + local storage + API-key auth + deterministic summarizer + SDK    | done   |
-| 2     | Insight analyzers (model right-sizing, error rate) + optional LLM narrative | done   |
-| 3     | Ant Design platform (keys, sessions, insights, overview)                    | done   |
-| 4     | Lessons / memory-teaching + enterprise rollup (`/v1/stats/overview`)        | done   |
-
-Hosted adapters (Cloudflare/D1/Postgres) remain optional future work behind the Phase 1
-strategy interfaces.
+---
 
 ## Contributing
 
-PRs welcome. The shape of the project:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. Short version:
 
-- **The contract is `packages/shared`** (zod schemas -> types -> OpenAPI). Change behavior there
-  first, then the server, SDK, and platform follow.
-- **Adapters implement an interface, not a vendor.** Storage (`StorageAdapter`), summarizer,
-  and rate-limiter are swapped via DI in `buildApp({...})`. A new backend = a new adapter, no
-  changes to the routes.
-- **Leave a runnable check behind.** Anything you add should come with a test (`npm test`) or
-  keep `npm run typecheck` / `npm run e2e` green.
+- **The contract lives in `packages/shared`.** Change behavior there first (Zod schemas ->
+  types -> OpenAPI); the server, SDK, and platform follow.
+- **Adapters implement an interface, not a vendor.** `StorageAdapter`, summarizer, and
+  rate-limiter are injected into `buildApp({...})`. A new backend is a new adapter - no changes
+  to routes.
+- **Leave a runnable check behind.** Additions should keep `npm test`, `npm run typecheck`,
+  and `npm run e2e` green.
 
-Security issues: see [SECURITY.md](SECURITY.md) - please report privately.
+Security issues: report privately via [SECURITY.md](SECURITY.md).
+
+---
 
 ## License
 
