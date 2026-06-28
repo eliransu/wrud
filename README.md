@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/assets/wrud-mascot.png" alt="wrud mascot" width="130" />
+
 # wrud
 
 **What R U Doing** - a local-first, open-source recorder for AI coding-agent sessions.
@@ -24,6 +26,12 @@ writes a plain-language recap. Recurring patterns across sessions become **lesso
 feed back as agent memory.
 
 **No cloud account. No telemetry. Nothing leaves your machine.**
+
+<div align="center">
+
+<img src="docs/assets/overview.png" alt="wrud Overview dashboard" width="820" />
+
+</div>
 
 ---
 
@@ -105,7 +113,7 @@ Run via `npx @wrud/cli <command>` or `wrud <command>` if installed globally.
 | `wrud`                                                  | Start the API + dashboard on one origin. Attaches if already running.                                                                                                                                                            |
 | `wrud install-hooks [--agent <id>] [--user\|--project]` | Auto-detect and wire every installed agent (or target one with `--agent claude-code` / `--agent cursor`). Mints a least-privilege ingest key, writes the hook config, self-verifies.                                             |
 | `wrud doctor`                                           | End-to-end self-test: create -> append -> summarize -> read against the live server. Prints PASS/FAIL and HTTP status.                                                                                                           |
-| `wrud stop`                                             | Stop the running server (on `WRUD_PORT`). Also used internally by `cleanup`.                                                                                                                                                    |
+| `wrud stop`                                             | Stop the running server (on `WRUD_PORT`). Also used internally by `cleanup`.                                                                                                                                                     |
 | `wrud cleanup` (alias `uninstall`)                      | Remove everything wrud installed: `~/.wrud` (db, tokens, log), temp session buffers, wrud's hook entries in every agent's config. Edits shared config surgically. `--dry-run` previews; confirms before deleting unless `--yes`. |
 | `wrud hook <record\|flush\|finalize> [--provider <id>]` | Hook handlers called by the agent's config. Not for direct use.                                                                                                                                                                  |
 
@@ -136,6 +144,13 @@ State lives in `~/.wrud`. The token is reused across runs.
 ## Dashboard
 
 Open `http://localhost:11190` and paste your token on the Connect screen.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/assets/sessions.png" alt="Sessions list with filters" /><br/><sub><b>Sessions</b> - filter by user, agent, model, date; per-session tokens and model breakdown.</sub></td>
+<td width="50%"><img src="docs/assets/lessons.png" alt="Lessons view" /><br/><sub><b>Lessons</b> - memory-teaching guidance from recurring patterns (e.g. model right-sizing).</sub></td>
+</tr>
+</table>
 
 | Section        | What it shows                                                                                                         |
 | -------------- | --------------------------------------------------------------------------------------------------------------------- |
