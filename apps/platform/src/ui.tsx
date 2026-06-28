@@ -26,17 +26,19 @@ export function StatTile({
   value,
   accent,
   delay = 0,
+  format,
 }: {
   label: string;
   value: number;
   accent?: boolean;
   delay?: number;
+  format?: (n: number) => string;
 }) {
   const v = useCountUp(value);
   return (
     <div className="wd-tile wd-rise" style={{ animationDelay: `${delay}ms` }}>
       <div className={"v" + (accent ? " accent" : "")}>
-        {v.toLocaleString()}
+        {format ? format(v) : v.toLocaleString()}
       </div>
       <div className="k wd-eyebrow">{label}</div>
     </div>

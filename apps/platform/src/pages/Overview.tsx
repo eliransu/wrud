@@ -13,7 +13,14 @@ import {
 } from "recharts";
 import { api } from "../api";
 import { useApi, LIVE_POLL_MS } from "../hooks";
-import { PageHeader, StatTile, Surface, Pill } from "../ui";
+import { PageHeader, StatTile, Surface } from "../ui";
+
+/** Compact large numbers so a growing token count never blows out the tile: 803, 12.3K, 1.1M. */
+const compact = (n: number) =>
+  new Intl.NumberFormat("en", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(n);
 import { Onboarding } from "../Onboarding";
 
 const STATUS_COLOR: Record<string, string> = {
@@ -84,11 +91,7 @@ export default function Overview() {
 
   return (
     <>
-      <PageHeader
-        eyebrow="Mission control"
-        title="Overview"
-        extra={<Pill tone="green">live</Pill>}
-      />
+      <PageHeader eyebrow="Mission control" title="Overview" />
 
       <div
         style={{
@@ -98,8 +101,18 @@ export default function Overview() {
         }}
       >
         <StatTile label="Sessions" value={data.sessions.total} accent />
-        <StatTile label="Model calls" value={totalCalls} delay={60} />
-        <StatTile label="Output tokens" value={outTokens} delay={120} />
+        <StatTile
+          label="Model calls"
+          value={totalCalls}
+          format={compact}
+          delay={60}
+        />
+        <StatTile
+          label="Output tokens"
+          value={outTokens}
+          format={compact}
+          delay={120}
+        />
         <StatTile label="Lessons" value={data.lessons.total} delay={180} />
         <StatTile label="Models" value={data.models.length} delay={240} />
       </div>
