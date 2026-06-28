@@ -1,0 +1,40 @@
+/* wrud docs - lime signal on a dark base, matching the dashboard + landing. */
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
+
+:root {
+  --ifm-color-primary: #5f8f28;
+  --ifm-color-primary-dark: #567f24;
+  --ifm-color-primary-darker: #517822;
+  --ifm-color-primary-darkest: #43631c;
+  --ifm-color-primary-light: #689f2c;
+  --ifm-color-primary-lighter: #6da82e;
+  --ifm-color-primary-lightest: #7cbe34;
+  --ifm-code-font-size: 92%;
+  --ifm-font-family-monospace:
+    "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] {
+  --ifm-color-primary: #b6f24e;
+  --ifm-color-primary-dark: #a8eb33;
+  --ifm-color-primary-darker: #9fe626;
+  --ifm-color-primary-darkest: #7fae33;
+  --ifm-color-primary-light: #c2f56a;
+  --ifm-color-primary-lighter: #c9f779;
+  --ifm-color-primary-lightest: #d9faa0;
+  --ifm-background-color: #0a0e0d;
+  --ifm-background-surface-color: #111715;
+  --ifm-navbar-background-color: rgba(10, 14, 13, 0.85);
+  --ifm-footer-background-color: #0a0e0d;
+  --docusaurus-highlighted-code-line-bg: rgba(182, 242, 78, 0.12);
+}
+
+/* a little brand polish */
+.navbar__title {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+[data-theme="dark"] .footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
