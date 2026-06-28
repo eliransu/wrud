@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.4] - 2026-06-28
+
+### Fixed
+
+- **`cleanup` no longer reports "1 failed".** Run from `$HOME`, the user and project scopes resolve to the same settings file - sometimes via a symlink (`/tmp` -> `/private/tmp`), so the path strings differ. cleanup now dedupes by **real path** and removes ENOENT-safely, and it **stops a running server first** so the data dir can't be regenerated mid-cleanup.
+
+### Added
+
+- **`wrud stop`** - stop the running server on `WRUD_PORT` (also used internally by `cleanup`).
+
+---
+
 ## [0.4.3] - 2026-06-28
 
 ### Added

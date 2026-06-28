@@ -12,8 +12,8 @@
 import {
   existsSync,
   readFileSync,
+  realpathSync,
   rmSync,
-  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -27,6 +27,7 @@ import {
   LOG_FILE,
 } from "./env.js";
 import { getProvider, providerIds } from "./providers.js";
+import { stopServers } from "./stop.js";
 
 const TEMP_DIR = join(tmpdir(), "wrud-sessions");
 
@@ -48,11 +49,22 @@ function isUnder(p: string, dir: string): boolean {
  * wrud hooks are listed; the file is read-tested so unreadable/non-JSON config is left alone. */
 function planHooks(): Target[] {
   const out: Target[] = [];
+  const seen = new Set<string>();
   for (const id of providerIds) {
     const provider = getProvider(id);
     for (const scope of ["user", "project"] as const) {
       const path = provider.settingsPath(scope);
       if (!existsSync(path)) continue;
+      // user & project can be the SAME file (run from $HOME), possibly reached via a symlink
+      // (e.g. /tmp -> /private/tmp), so the strings differ. Dedupe by real path: never twice.
+      let key = path;
+      try {
+        key = realpathSync(path);
+      } catch {
+        /* keep path */
+      }
+      if (seen.has(key)) continue;
+      seen.add(key);
       let settings: any;
       try {
         settings = JSON.parse(readFileSync(path, "utf8") || "{}");
@@ -75,7 +87,8 @@ function planHooks(): Target[] {
           : "strip wrud hooks",
         apply: () => {
           provider.removeHooks(settings);
-          if (Object.keys(settings).length === 0) unlinkSync(path);
+          if (Object.keys(settings).length === 0)
+            rmSync(path, { force: true }); // ENOENT-safe even if already gone
           else writeFileSync(path, JSON.stringify(settings, null, 2) + "\n");
         },
       });
@@ -190,6 +203,15 @@ export async function runCleanup(args: string[]): Promise<number> {
       console.log("\n  Aborted. Nothing was changed.\n");
       return 1;
     }
+  }
+
+  // A live server recreates ~/.wrud the instant it's deleted - stop it first.
+  const stopped = stopServers();
+  if (stopped) {
+    console.log(
+      `  stopped ${stopped} running server${stopped === 1 ? "" : "s"}`,
+    );
+    await new Promise((r) => setTimeout(r, 400));
   }
 
   let done = 0;
