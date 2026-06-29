@@ -239,3 +239,20 @@ export const errorSchema = z.object({
 
 export const paginated = <T extends z.ZodTypeAny>(item: T) =>
   z.object({ items: z.array(item), nextCursor: z.string().nullable() });
+
+/* ---------- Facets + Reports (goals #2/#3) ---------- */
+export const facetCountSchema = z.object({
+  value: z.string(),
+  sessions: z.number().int(),
+});
+/** Map of dimension -> its distinct values + counts (e.g. { user: [...], model: [...] }). */
+export const facetsResponseSchema = z.record(
+  z.string(),
+  z.array(facetCountSchema),
+);
+
+export const reportSummarySchema = z.object({
+  total: z.number().int(),
+  byDim: z.record(z.string(), z.array(facetCountSchema)),
+  trend: z.array(z.object({ date: z.string(), sessions: z.number().int() })),
+});

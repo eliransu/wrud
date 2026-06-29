@@ -2,6 +2,12 @@
  * MemoryStorageAdapter - Map-backed StorageAdapter for tests and ephemeral local runs.
  * Deep-clones on the way in/out so callers can't mutate stored records by reference.
  */
+import {
+  FACET_DIMS,
+  sessionFacets,
+  eventFacets,
+  eventTokens,
+} from "@wrud/shared";
 import type {
   StorageAdapter,
   Session,
@@ -15,9 +21,21 @@ import type {
   LessonFilter,
   Paginated,
   Page,
+  Facet,
+  FacetDim,
+  FacetCount,
+  ReportAggregate,
 } from "@wrud/shared";
 
 const clone = <T>(v: T): T => structuredClone(v);
+
+/** value->count map -> sorted [{value,sessions}] (desc count, then value asc), top `limit`. */
+function rankCounts(counts: Map<string, number>, limit: number): FacetCount[] {
+  return [...counts.entries()]
+    .map(([value, sessions]) => ({ value, sessions }))
+    .sort((a, b) => b.sessions - a.sessions || (a.value < b.value ? -1 : 1))
+    .slice(0, limit === Infinity ? undefined : limit);
+}
 
 export class MemoryStorageAdapter implements StorageAdapter {
   private sessions = new Map<string, Session>();
@@ -34,25 +52,144 @@ export class MemoryStorageAdapter implements StorageAdapter {
     return s ? clone(s) : undefined;
   }
 
+  /** The full facet set of a session (creation facets + the union across its events). */
+  private facetsOf(s: Session): Facet[] {
+    const out = [...sessionFacets(s)];
+    for (const e of this.events.get(s.id)?.values() ?? [])
+      out.push(...eventFacets(e));
+    return out;
+  }
+  private tokensOf(s: Session): { input: number; output: number } {
+    let input = 0,
+      output = 0;
+    for (const e of this.events.get(s.id)?.values() ?? []) {
+      const t = eventTokens(e);
+      input += t.input;
+      output += t.output;
+    }
+    return { input, output };
+  }
+  private matches(s: Session, f: SessionFilter): boolean {
+    const want: Record<string, string[]> = {};
+    for (const [d, v] of Object.entries(f.facets ?? {}))
+      if (v?.length) want[d] = [...v];
+    if (f.user) (want.user ??= []).push(f.user);
+    if (f.agent) (want.agent ??= []).push(f.agent);
+    if (f.model) (want.model ??= []).push(f.model);
+    const have = this.facetsOf(s);
+    for (const [dim, vals] of Object.entries(want))
+      if (!vals.some((v) => have.some((h) => h.dim === dim && h.value === v)))
+        return false;
+    if (f.status) {
+      const st = Array.isArray(f.status) ? f.status : [f.status];
+      if (!st.includes(s.status)) return false;
+    }
+    if (f.from && s.createdAt < f.from) return false;
+    if (f.to && s.createdAt > f.to) return false;
+    if (f.minInputTokens != null || f.minOutputTokens != null) {
+      const t = this.tokensOf(s);
+      if (f.minInputTokens != null && t.input < f.minInputTokens) return false;
+      if (f.minOutputTokens != null && t.output < f.minOutputTokens)
+        return false;
+    }
+    if (f.hasError && !have.some((h) => h.dim === "error_kind")) return false;
+    return true;
+  }
+
   async listSessions(f: SessionFilter): Promise<Paginated<Session>> {
-    const hasModel = (id: string, model: string) =>
-      [...(this.events.get(id)?.values() ?? [])].some(
-        (e) => e.type === "model_use" && (e.payload as any)?.model === model,
+    // created_at DESC, id DESC - same total order as the SQLite adapter.
+    const all = [...this.sessions.values()]
+      .filter((s) => this.matches(s, f))
+      .sort((a, b) =>
+        a.createdAt === b.createdAt
+          ? a.id < b.id
+            ? 1
+            : -1
+          : a.createdAt < b.createdAt
+            ? 1
+            : -1,
       );
-    const items = [...this.sessions.values()]
-      .filter((s) => (f.user ? s.user.id === f.user : true))
-      .filter((s) => (f.agent ? s.agent.name === f.agent : true))
-      .filter((s) => (f.model ? hasModel(s.id, f.model) : true))
-      .filter((s) => (f.status ? s.status === f.status : true))
-      .filter((s) => (f.from ? s.createdAt >= f.from : true))
-      .filter((s) => (f.to ? s.createdAt <= f.to : true))
-      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); // newest first
+    let start = 0;
+    if (f.cursor) {
+      const sep = f.cursor.indexOf("__");
+      const ts = f.cursor.slice(0, sep);
+      const cid = f.cursor.slice(sep + 2);
+      const i = all.findIndex(
+        (s) => s.createdAt < ts || (s.createdAt === ts && s.id < cid),
+      );
+      start = i < 0 ? all.length : i;
+    }
     const limit = f.limit ?? 50;
-    const start = f.cursor ? items.findIndex((s) => s.id === f.cursor) + 1 : 0;
-    const slice = items.slice(start, start + limit);
-    const nextCursor =
-      start + limit < items.length ? slice[slice.length - 1]!.id : null;
+    const slice = all.slice(start, start + limit);
+    const last = slice[slice.length - 1];
+    const hasMore = start + limit < all.length;
+    const nextCursor = hasMore && last ? `${last.createdAt}__${last.id}` : null;
     return { items: slice.map(clone), nextCursor };
+  }
+
+  async listFacets(
+    opts: { dim?: FacetDim | "status"; q?: string; limit?: number } = {},
+  ): Promise<Partial<Record<FacetDim | "status", FacetCount[]>>> {
+    const limit = opts.limit ?? 50;
+    const dims = opts.dim ? [opts.dim] : [...FACET_DIMS, "status" as const];
+    const out: Partial<Record<FacetDim | "status", FacetCount[]>> = {};
+    for (const d of dims) {
+      const counts = new Map<string, number>();
+      for (const s of this.sessions.values()) {
+        const vals =
+          d === "status"
+            ? new Set([s.status])
+            : new Set(
+                this.facetsOf(s)
+                  .filter((f) => f.dim === d)
+                  .map((f) => f.value),
+              );
+        for (const v of vals) {
+          if (opts.q && !v.startsWith(opts.q)) continue;
+          counts.set(v, (counts.get(v) ?? 0) + 1);
+        }
+      }
+      out[d] = rankCounts(counts, limit);
+    }
+    return out;
+  }
+
+  async reportAggregate(
+    f: SessionFilter,
+    opts: { topPerDim?: number } = {},
+  ): Promise<ReportAggregate> {
+    const top = opts.topPerDim ?? 10;
+    const matched = [...this.sessions.values()].filter((s) =>
+      this.matches(s, f),
+    );
+    const byDim: ReportAggregate["byDim"] = {};
+    for (const d of FACET_DIMS) {
+      const counts = new Map<string, number>();
+      for (const s of matched)
+        for (const v of new Set(
+          this.facetsOf(s)
+            .filter((x) => x.dim === d)
+            .map((x) => x.value),
+        ))
+          counts.set(v, (counts.get(v) ?? 0) + 1);
+      const rows = rankCounts(counts, top);
+      if (rows.length) byDim[d] = rows;
+    }
+    const statusCounts = new Map<string, number>();
+    for (const s of matched)
+      statusCounts.set(s.status, (statusCounts.get(s.status) ?? 0) + 1);
+    const statusRows = rankCounts(statusCounts, Infinity);
+    if (statusRows.length) byDim.status = statusRows;
+
+    const trendCounts = new Map<string, number>();
+    for (const s of matched) {
+      const day = s.createdAt.slice(0, 10);
+      trendCounts.set(day, (trendCounts.get(day) ?? 0) + 1);
+    }
+    const trend = [...trendCounts.entries()]
+      .map(([date, sessions]) => ({ date, sessions }))
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
+    return { total: matched.length, byDim, trend };
   }
 
   async sessionStats(ids: string[]): Promise<Record<string, SessionStats>> {

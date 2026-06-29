@@ -15,6 +15,7 @@ import type {
   Insight,
   ApiKey,
   Lesson,
+  FacetDim,
 } from "./index.js";
 
 export interface Page {
@@ -27,17 +28,40 @@ export interface Paginated<T> {
 }
 
 export interface SessionFilter {
+  /** Convenience single-value fields - the adapter folds these into `facets`. */
   user?: string;
   agent?: string;
   model?: string;
-  status?: SessionStatus;
-  from?: string;
-  to?: string;
+  /** Multi-value facet filters: dim -> allowed values. OR within a dim, AND across dims. */
+  facets?: Partial<Record<FacetDim, string[]>>;
+  /** One status or several (OR). */
+  status?: SessionStatus | SessionStatus[];
+  from?: string; // createdAt >=
+  to?: string; // createdAt <=
+  minInputTokens?: number;
+  minOutputTokens?: number;
+  /** Only sessions that recorded at least one error event. */
+  hasError?: boolean;
   limit?: number;
   cursor?: string | null;
 }
 
-/** Per-session rollup derived from a session's events (model_use), for the sessions list. */
+/** A distinct facet value and how many sessions carry it - powers search-and-select UIs. */
+export interface FacetCount {
+  value: string;
+  sessions: number;
+}
+
+/** Aggregate rollup over the sessions matching a filter - powers the Reports page. */
+export interface ReportAggregate {
+  total: number;
+  /** Top values per dimension across the matched set (plus `status`, derived from the column). */
+  byDim: Partial<Record<FacetDim | "status", FacetCount[]>>;
+  /** Sessions per calendar day (UTC) across the matched set, ascending. */
+  trend: { date: string; sessions: number }[];
+}
+
+/** Per-session rollup (token counters + models), for the sessions list. */
 export interface SessionStats {
   events: number;
   models: string[];
@@ -56,8 +80,23 @@ export interface StorageAdapter {
   createSession(s: Session): Promise<void>;
   getSession(id: string): Promise<Session | undefined>;
   listSessions(f: SessionFilter): Promise<Paginated<Session>>;
-  /** Event count + model/token rollup per session id, derived from events (for the list view). */
+  /** Event count + model/token rollup per session id (for the list view). */
   sessionStats(ids: string[]): Promise<Record<string, SessionStats>>;
+  /**
+   * Distinct facet values + session counts. With `dim`, returns just that dimension
+   * (optionally prefix-filtered by `q` for type-ahead); without, the top values of every
+   * dimension. `status` is included as a synthetic dim (derived from the session column).
+   */
+  listFacets(opts?: {
+    dim?: FacetDim | "status";
+    q?: string;
+    limit?: number;
+  }): Promise<Partial<Record<FacetDim | "status", FacetCount[]>>>;
+  /** Total + per-dimension top values + daily trend over the sessions matching `f`. */
+  reportAggregate(
+    f: SessionFilter,
+    opts?: { topPerDim?: number },
+  ): Promise<ReportAggregate>;
   setSessionStatus(
     id: string,
     status: SessionStatus,

@@ -19,6 +19,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.0] - 2026-06-29
+
+### Added
+
+- **Reports page — build a query, see the answer.** A new dashboard section where you pick filters (users, agents, models, skills, slash-commands, tools, MCP extensions, file types, error kinds, status, date range, token floors) and get stat tiles, per-dimension top-N charts, a sessions-over-time trend, and a drill-down table of the matching sessions. Filter state lives in the URL, so any query is shareable and bookmarkable.
+- **Search-and-select filters across your whole dataset.** `GET /v1/facets` returns the distinct values (with session counts) for every dimension, with prefix type-ahead. The Sessions and Reports filter pickers now search every user/model/skill/tool that ever appeared — not just the rows currently on screen.
+- **`GET /v1/reports/summary`** — total + per-dimension top values + daily trend over any filter, sharing the exact query language as `GET /v1/sessions`.
+
+### Changed
+
+- **Sessions are indexed by dimension for fast, scalable queries.** A denormalized `session_facets` index (user, agent, model, tool, mcp, skill, command, file_ext, error_kind) plus live per-session rollup counters (events, input/output tokens) are maintained as events arrive. Filtering and reporting are now indexed lookups instead of scanning event JSON, and the sessions list uses keyset pagination. Existing databases are backfilled automatically on first start — no migration step. (Storage stays local SQLite; the adapter seam still allows a hosted backend later.)
+- **Richer session filters.** Every dimension accepts multiple values (OR within a dimension, AND across dimensions), plus `hasError` and minimum input/output token thresholds.
+
+---
+
 ## [0.4.5] - 2026-06-29
 
 ### Added
