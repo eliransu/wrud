@@ -30,14 +30,6 @@ const items = [
   { key: "/lessons", label: "Lessons", icon: <BulbOutlined /> },
 ];
 
-const sectionEyebrow: Record<string, string> = {
-  "/": "Mission control",
-  "/sessions": "Telemetry",
-  "/reports": "Insights",
-  "/keys": "Access",
-  "/lessons": "Memory",
-};
-
 function ThemeToggle() {
   const { mode, toggle } = useThemeMode();
   return (
@@ -81,57 +73,51 @@ export default function App() {
   return (
     <AuthGate>
       <Layout style={{ minHeight: "100vh" }}>
-        <Layout.Sider width={232} theme="light">
-          <div style={{ padding: "24px 20px 18px" }}>
-            <div className="wd-brand">
+        <header className="wd-topbar">
+          <div className="wd-topbar-inner">
+            <div
+              className="wd-brand"
+              onClick={() => nav("/")}
+              style={{ cursor: "pointer", flex: "none" }}
+            >
               <img className="wd-mascot" src="/wrud-mascot.png" alt="" />
               wrud
             </div>
-            <div className="wd-eyebrow" style={{ marginTop: 8 }}>
-              What R U Doing
-            </div>
-          </div>
-          <Menu
-            mode="inline"
-            selectedKeys={[selected]}
-            items={items}
-            onClick={(e) => nav(e.key)}
-          />
-        </Layout.Sider>
-        <Layout>
-          <Layout.Header
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "0 28px",
-              background: "transparent",
-            }}
-          >
-            <div className="wd-eyebrow">
-              {sectionEyebrow[selected] ?? "wrud"}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Menu
+              className="wd-nav"
+              mode="horizontal"
+              selectedKeys={[selected]}
+              items={items}
+              onClick={(e) => nav(e.key)}
+            />
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                flex: "none",
+              }}
+            >
               <ThemeToggle />
               <Button size="small" onClick={clear}>
                 Change key
               </Button>
             </div>
-          </Layout.Header>
-          <Layout.Content style={{ padding: "30px 28px 56px" }}>
-            <div style={{ maxWidth: 1180, margin: "0 auto" }}>
-              <Routes>
-                <Route path="/" element={<Overview />} />
-                <Route path="/sessions" element={<Sessions />} />
-                <Route path="/sessions/:id" element={<SessionDetail />} />
-                <Route path="/reports" element={<Reports />} />
-                <Route path="/keys" element={<Keys />} />
-                <Route path="/lessons" element={<Lessons />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </div>
-          </Layout.Content>
-        </Layout>
+          </div>
+        </header>
+        <Layout.Content style={{ padding: "30px 28px 56px" }}>
+          <div style={{ maxWidth: 1180, margin: "0 auto" }}>
+            <Routes>
+              <Route path="/" element={<Overview />} />
+              <Route path="/sessions" element={<Sessions />} />
+              <Route path="/sessions/:id" element={<SessionDetail />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/keys" element={<Keys />} />
+              <Route path="/lessons" element={<Lessons />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </div>
+        </Layout.Content>
       </Layout>
     </AuthGate>
   );

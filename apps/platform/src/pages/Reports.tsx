@@ -14,6 +14,8 @@ import {
 } from "recharts";
 import { api } from "../api";
 import { useApi } from "../hooks";
+import { useThemeMode } from "../theme-mode";
+import { chartPalette } from "../theme";
 import { PageHeader, StatTile, Surface, Pill } from "../ui";
 import {
   FacetFilterBar,
@@ -28,23 +30,26 @@ const STATUS_TONE: Record<string, string> = {
   summarized: "green",
   abandoned: "red",
 };
-const tick = {
-  fill: "#8fa298",
+
+type Palette = ReturnType<typeof chartPalette>;
+type FacetCount = { value: string; sessions: number };
+const axisTick = (c: Palette) => ({
+  fill: c.tick,
   fontSize: 12,
   fontFamily: "JetBrains Mono, monospace",
-};
-
-type FacetCount = { value: string; sessions: number };
+});
 
 /** Horizontal top-N bars for one dimension's aggregate. */
 function TopBars({
   title,
   rows,
   delay,
+  c,
 }: {
   title: string;
   rows?: FacetCount[];
   delay?: number;
+  c: Palette;
 }) {
   const data = (rows ?? []).map((r) => ({
     name: r.value,
@@ -66,7 +71,7 @@ function TopBars({
           >
             <XAxis
               type="number"
-              tick={tick}
+              tick={axisTick(c)}
               axisLine={false}
               tickLine={false}
               allowDecimals={false}
@@ -75,14 +80,14 @@ function TopBars({
               type="category"
               dataKey="name"
               width={150}
-              tick={tick}
+              tick={axisTick(c)}
               axisLine={false}
               tickLine={false}
             />
-            <Tooltip cursor={{ fill: "rgba(182,242,78,0.06)" }} />
+            <Tooltip cursor={{ fill: "rgba(127,127,127,0.08)" }} />
             <Bar dataKey="sessions" radius={[0, 8, 8, 0]} barSize={16}>
               {data.map((_, i) => (
-                <Cell key={i} fill={i === 0 ? "#b6f24e" : "#5be0d6"} />
+                <Cell key={i} fill={i === 0 ? c.accent : c.accent2} />
               ))}
             </Bar>
           </BarChart>
@@ -94,6 +99,8 @@ function TopBars({
 
 export default function Reports() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { mode } = useThemeMode();
+  const c = chartPalette(mode);
   // Filter state lives in the URL (shareable/bookmarkable; nothing persisted server-side).
   const filters = useMemo(() => paramsToFilter(searchParams), [searchParams]);
   const query = filterToParams(filters);
@@ -172,12 +179,12 @@ export default function Reports() {
                 <LineChart data={trend} margin={{ left: 8, right: 16, top: 8 }}>
                   <XAxis
                     dataKey="date"
-                    tick={tick}
+                    tick={axisTick(c)}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={tick}
+                    tick={axisTick(c)}
                     axisLine={false}
                     tickLine={false}
                     allowDecimals={false}
@@ -187,7 +194,7 @@ export default function Reports() {
                   <Line
                     type="monotone"
                     dataKey="sessions"
-                    stroke="#b6f24e"
+                    stroke={c.accent}
                     strokeWidth={2}
                     dot={false}
                   />
@@ -204,12 +211,17 @@ export default function Reports() {
               marginTop: 16,
             }}
           >
-            <TopBars title="Top models" rows={byDim.model} delay={120} />
-            <TopBars title="Top skills" rows={byDim.skill} delay={160} />
-            <TopBars title="Top tools" rows={byDim.tool} delay={200} />
-            <TopBars title="Top users" rows={byDim.user} delay={240} />
-            <TopBars title="MCP extensions" rows={byDim.mcp} delay={280} />
-            <TopBars title="Commands" rows={byDim.command} delay={320} />
+            <TopBars title="Top models" rows={byDim.model} delay={120} c={c} />
+            <TopBars title="Top skills" rows={byDim.skill} delay={160} c={c} />
+            <TopBars title="Top tools" rows={byDim.tool} delay={200} c={c} />
+            <TopBars title="Top users" rows={byDim.user} delay={240} c={c} />
+            <TopBars
+              title="MCP extensions"
+              rows={byDim.mcp}
+              delay={280}
+              c={c}
+            />
+            <TopBars title="Commands" rows={byDim.command} delay={320} c={c} />
           </div>
 
           <Surface
