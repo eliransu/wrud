@@ -70,12 +70,22 @@ type FacetMap = Partial<Record<string, { value: string; sessions: number }[]>>;
 export function FacetFilterBar({
   value,
   onChange,
+  dims,
+  showRange = true,
+  showTokens = true,
+  showError = true,
 }: {
   value: FilterState;
   onChange: (next: FilterState) => void;
+  /** Restrict to these dimensions (default: all). Sessions shows a focused subset; Reports all. */
+  dims?: Dim[];
+  showRange?: boolean;
+  showTokens?: boolean;
+  showError?: boolean;
 }) {
   const { data } = useApi<FacetMap>(() => api.facets({ limit: "500" }), []);
   const facets = data ?? {};
+  const shown = DIMS.filter(([d]) => !dims || dims.includes(d));
 
   const optionsFor = useMemo(
     () => (dim: string) =>
@@ -98,7 +108,7 @@ export function FacetFilterBar({
         alignItems: "center",
       }}
     >
-      {DIMS.map(([dim, label]) => (
+      {shown.map(([dim, label]) => (
         <Select
           key={dim}
           mode="multiple"
@@ -117,27 +127,33 @@ export function FacetFilterBar({
           }
         />
       ))}
-      <RangePicker
-        onChange={(d) =>
-          set({
-            from: d?.[0]?.startOf("day").toISOString(),
-            to: d?.[1]?.endOf("day").toISOString(),
-          })
-        }
-      />
-      <InputNumber
-        placeholder="min out tokens"
-        min={0}
-        style={{ width: 150 }}
-        value={value.minOutputTokens}
-        onChange={(v) => set({ minOutputTokens: v ?? undefined })}
-      />
-      <Checkbox
-        checked={!!value.hasError}
-        onChange={(e) => set({ hasError: e.target.checked || undefined })}
-      >
-        Errored
-      </Checkbox>
+      {showRange && (
+        <RangePicker
+          onChange={(d) =>
+            set({
+              from: d?.[0]?.startOf("day").toISOString(),
+              to: d?.[1]?.endOf("day").toISOString(),
+            })
+          }
+        />
+      )}
+      {showTokens && (
+        <InputNumber
+          placeholder="min out tokens"
+          min={0}
+          style={{ width: 150 }}
+          value={value.minOutputTokens}
+          onChange={(v) => set({ minOutputTokens: v ?? undefined })}
+        />
+      )}
+      {showError && (
+        <Checkbox
+          checked={!!value.hasError}
+          onChange={(e) => set({ hasError: e.target.checked || undefined })}
+        >
+          Errored
+        </Checkbox>
+      )}
     </div>
   );
 }

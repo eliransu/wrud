@@ -1,10 +1,12 @@
-import { Layout, Menu, Button } from "antd";
+import { Layout, Menu, Button, Dropdown, type MenuProps } from "antd";
 import {
   DashboardOutlined,
   ApiOutlined,
   KeyOutlined,
   BulbOutlined,
   BarChartOutlined,
+  SettingOutlined,
+  LogoutOutlined,
 } from "@ant-design/icons";
 import {
   Routes,
@@ -30,55 +32,71 @@ const items = [
   { key: "/lessons", label: "Lessons", icon: <BulbOutlined /> },
 ];
 
-function ThemeToggle() {
+const sunIcon = (
+  <svg
+    width="15"
+    height="15"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+  >
+    <circle cx="12" cy="12" r="4.2" />
+    <path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" />
+  </svg>
+);
+const moonIcon = (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+  </svg>
+);
+
+/** Right-side settings dropdown: theme toggle + change key (log out). */
+function SettingsMenu() {
   const { mode, toggle } = useThemeMode();
+  const { clear } = useAuth();
+  const items: MenuProps["items"] = [
+    {
+      key: "theme",
+      icon: mode === "dark" ? sunIcon : moonIcon,
+      label: mode === "dark" ? "Light theme" : "Dark theme",
+      onClick: toggle,
+    },
+    { type: "divider" },
+    {
+      key: "changekey",
+      icon: <LogoutOutlined />,
+      label: "Change key",
+      onClick: clear,
+    },
+  ];
   return (
-    <Button
-      size="small"
-      type="text"
-      onClick={toggle}
-      aria-label={
-        mode === "dark" ? "Switch to light theme" : "Switch to dark theme"
-      }
-      icon={
-        mode === "dark" ? (
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-          >
-            <circle cx="12" cy="12" r="4.2" />
-            <path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" />
-          </svg>
-        ) : (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
-          </svg>
-        )
-      }
-    />
+    <Dropdown menu={{ items }} trigger={["click"]} placement="bottomRight">
+      <Button
+        type="text"
+        aria-label="Settings"
+        icon={<SettingOutlined style={{ fontSize: 16 }} />}
+      />
+    </Dropdown>
   );
 }
 
 export default function App() {
   const nav = useNavigate();
   const loc = useLocation();
-  const { clear } = useAuth();
   const selected = "/" + (loc.pathname.split("/")[1] ?? "");
 
   return (
     <AuthGate>
       <Layout style={{ minHeight: "100vh" }}>
         <header className="wd-topbar">
+          {/* three zones: brand far-left, nav centered, settings far-right */}
           <div className="wd-topbar-inner">
             <div
               className="wd-brand"
               onClick={() => nav("/")}
-              style={{ cursor: "pointer", flex: "none" }}
+              style={{ cursor: "pointer", justifySelf: "start" }}
             >
               <img className="wd-mascot" src="/wrud-mascot.png" alt="" />
               wrud
@@ -90,18 +108,8 @@ export default function App() {
               items={items}
               onClick={(e) => nav(e.key)}
             />
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                flex: "none",
-              }}
-            >
-              <ThemeToggle />
-              <Button size="small" onClick={clear}>
-                Change key
-              </Button>
+            <div style={{ justifySelf: "end" }}>
+              <SettingsMenu />
             </div>
           </div>
         </header>

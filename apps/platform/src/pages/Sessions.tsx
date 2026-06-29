@@ -67,7 +67,14 @@ export default function Sessions() {
     <>
       <PageHeader eyebrow="Telemetry" title="Sessions" />
 
-      <FacetFilterBar value={filters} onChange={setFilters} />
+      {/* Sessions = focused browse filters; the full dimension set lives on Reports. */}
+      <FacetFilterBar
+        value={filters}
+        onChange={setFilters}
+        dims={["user", "agent", "model", "status"]}
+        showTokens={false}
+        showError={false}
+      />
 
       <Surface>
         <Table

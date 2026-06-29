@@ -48,7 +48,8 @@ function eventName(e: any): string {
 /** A short one-line preview (never the full JSON). */
 function eventPreview(e: any): string {
   const p = e.payload ?? {};
-  const clip = (s: string, n = 90) => (s.length > n ? s.slice(0, n) + "..." : s);
+  const clip = (s: string, n = 90) =>
+    s.length > n ? s.slice(0, n) + "..." : s;
   switch (e.type) {
     case "tool_call":
       return clip(
@@ -294,7 +295,10 @@ export default function SessionDetail() {
         <Table
           rowKey="id"
           size="small"
-          dataSource={events?.items ?? []}
+          // newest events first (LIFO)
+          dataSource={[...(events?.items ?? [])].sort(
+            (a: any, b: any) => b.seq - a.seq,
+          )}
           pagination={{ pageSize: 15, hideOnSinglePage: true }}
           locale={{ emptyText: "No events" }}
           expandable={{

@@ -168,19 +168,22 @@ h4 {
   width: 100%;
   max-width: 1240px;
   margin: 0 auto;
-  display: flex;
+  /* three zones: brand (left) | nav (centered) | settings (right) */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 24px;
 }
-/* horizontal AntD menu, de-chromed to sit inline in the bar */
+/* horizontal AntD menu, de-chromed to sit inline + centered in the bar */
 .wd-nav.ant-menu-horizontal {
-  flex: 1;
   min-width: 0;
   border-bottom: none !important;
   background: transparent !important;
   font-family: var(--mono);
   font-size: 13px;
   line-height: 62px;
+  display: flex;
+  justify-content: center;
 }
 .wd-nav.ant-menu-horizontal .ant-menu-item::after {
   inset-inline: 10px !important; /* keep the active underline snug under the label */

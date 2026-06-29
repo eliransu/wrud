@@ -19,6 +19,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.2] - 2026-06-29
+
+### Changed
+
+- **Top navigation realigned** to a three-zone header — brand on the left, sections centered, settings on the right.
+- **Settings dropdown.** The theme toggle and "Change key" are now consolidated behind a single gear menu on the right of the header.
+- **Leaner Sessions filters.** The Sessions page shows a focused set (user, agent, model, status, date range); the full dimension set lives on Reports.
+- **Newest-first event log.** A session's event log is now ordered LIFO (most recent at the top).
+
+---
+
 ## [0.5.1] - 2026-06-29
 
 ### Added
