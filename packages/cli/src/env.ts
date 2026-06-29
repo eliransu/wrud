@@ -22,6 +22,13 @@ export const BASE = (
 ).replace(/\/$/, "");
 
 /** Admin/dashboard token (full scopes) and the least-privilege ingest token for hooks. */
+/** Optional explicit agent identity. WRUD_AGENT_NAME overrides the auto-detected provider name
+ * (claude-code/cursor/...) so you can label a session source however you want - e.g. tag a remote
+ * agent "prod-bot" even though it's really claude-code. WRUD_AGENT_VERSION is recorded alongside. */
+export const AGENT_NAME = process.env.WRUD_AGENT_NAME?.trim() || undefined;
+export const AGENT_VERSION =
+  process.env.WRUD_AGENT_VERSION?.trim() || undefined;
+
 export const ADMIN_TOKEN_FILE =
   process.env.WRUD_TOKEN_FILE || join(HOME, "token");
 export const INGEST_TOKEN_FILE =

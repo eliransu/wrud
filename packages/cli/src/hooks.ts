@@ -20,7 +20,24 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BASE, LOG_FILE, ensureHome, http, resolveIngestToken } from "./env.js";
+import {
+  BASE,
+  LOG_FILE,
+  AGENT_NAME,
+  AGENT_VERSION,
+  ensureHome,
+  http,
+  resolveIngestToken,
+} from "./env.js";
+
+/** The agent identity to record. WRUD_AGENT_NAME overrides the detected provider name, so a
+ * session can be labeled (e.g. a remote source) even when the underlying agent is claude-code. */
+function agentInfo(detected: string): { name: string; version?: string } {
+  return {
+    name: AGENT_NAME || detected,
+    ...(AGENT_VERSION ? { version: AGENT_VERSION } : {}),
+  };
+}
 import { cliNarrator, isNestedSummaryRun } from "./narrator.js";
 import { bufferToEvents, transcriptToUsage } from "./transcript.js";
 import {
@@ -117,7 +134,7 @@ async function ensureSession(
     );
   const res = await http("POST", "/v1/sessions", token, {
     user: { id: process.env.USER || "user" },
-    agent: { name: provider.agentName },
+    agent: agentInfo(provider.agentName),
     runtime: { os: process.platform, cwd: h.cwd || "" },
     metadata: { agentSession: sid, provider: provider.id },
   });
@@ -338,7 +355,7 @@ async function finalizeWorker(
   } else {
     session = await client.startSession({
       user: { id: process.env.USER || "user" },
-      agent: { name: agentName },
+      agent: agentInfo(agentName),
       runtime: {
         os: process.platform,
         cwd: start?.cwd || h.cwd || process.cwd(),
