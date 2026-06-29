@@ -1,6 +1,26 @@
 @import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
+/* Light is the default; `.dark` (toggled on <html>) flips to mission-control.
+ * --ov is the overlay/hairline base (white on dark, near-black on light), used via
+ * rgb(var(--ov) / <alpha>) wherever the old theme hardcoded rgba(255,255,255,…). */
 :root {
+  --signal: #4d7c0f; /* deep green - legible accent text on white */
+  --signal-dim: #5f9410;
+  --amber: #b0730c;
+  --red: #d13c3c;
+  --cyan: #1f9189;
+  --bg: #f4f7f0;
+  --ink: #14201b;
+  --muted: #5c6b62;
+  --elevated: #ffffff;
+  --code-str: #3f6212;
+  --ov: 20 32 27;
+  --dot: 20 32 27;
+  --dot-alpha: 0.05;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+}
+.dark {
   --signal: #b6f24e;
   --signal-dim: #7fae33;
   --amber: #ffb454;
@@ -9,8 +29,11 @@
   --bg: #0a0e0d;
   --ink: #e8efe9;
   --muted: #8fa298;
-  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  --display: "Bricolage Grotesque", system-ui, sans-serif;
+  --elevated: #0e1513;
+  --code-str: #cdeb8b;
+  --ov: 255 255 255;
+  --dot: 255 255 255;
+  --dot-alpha: 0.035;
 }
 
 html,
@@ -51,7 +74,7 @@ body::before {
   pointer-events: none;
   z-index: 0;
   background-image: radial-gradient(
-    rgba(255, 255, 255, 0.035) 1px,
+    rgb(var(--ov) / 0.035) 1px,
     transparent 1px
   );
   background-size: 22px 22px;
@@ -94,7 +117,9 @@ h4 {
   height: 1.4em;
   object-fit: contain;
   margin-right: 2px;
-  /* the black-on-transparent telemetry mascot, inverted to read on the dark theme */
+}
+/* the black-on-transparent telemetry mascot: invert to white only on the dark theme */
+.dark .wd-brand .wd-mascot {
   filter: invert(1);
 }
 
@@ -102,12 +127,12 @@ h4 {
 .wd-tile {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid rgb(var(--ov) / 0.07);
   border-radius: 16px;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.025),
-    rgba(255, 255, 255, 0)
+    rgb(var(--ov) / 0.025),
+    rgb(var(--ov) / 0)
   );
   padding: 20px 22px;
   transition:
@@ -149,12 +174,12 @@ h4 {
 
 /* ---- generic surface card ---- */
 .wd-card {
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid rgb(var(--ov) / 0.07);
   border-radius: 16px;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.02),
-    rgba(255, 255, 255, 0)
+    rgb(var(--ov) / 0.02),
+    rgb(var(--ov) / 0)
   );
   padding: 22px;
 }
@@ -253,7 +278,7 @@ h4 {
   text-transform: uppercase;
   color: var(--muted);
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgb(var(--ov) / 0.12);
   border-radius: 6px;
   padding: 2px 8px;
   cursor: pointer;
@@ -288,7 +313,7 @@ h4 {
 }
 .jt-children {
   padding-left: 16px;
-  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  border-left: 1px solid rgb(var(--ov) / 0.07);
   margin-left: 4px;
 }
 .jt-key {
@@ -299,7 +324,7 @@ h4 {
   color: var(--muted);
 }
 .jt-str {
-  color: #cdeb8b;
+  color: var(--code-str);
 }
 .jt-num {
   color: var(--amber);
@@ -318,9 +343,9 @@ h4 {
 /* ---- event-log call/response panels ---- */
 .wd-io {
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgb(var(--ov) / 0.08);
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.015);
+  background: rgb(var(--ov) / 0.015);
 }
 .wd-io.call {
   border-left: 3px solid var(--cyan);
@@ -343,7 +368,7 @@ h4 {
   height: 10px;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.09);
+  background: rgb(var(--ov) / 0.09);
   border-radius: 8px;
 }
 *::-webkit-scrollbar-thumb:hover {
@@ -363,10 +388,10 @@ h4 {
   border-inline-end: none !important;
 }
 .ant-layout-sider {
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  border-right: 1px solid rgb(var(--ov) / 0.06);
 }
 .ant-layout-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgb(var(--ov) / 0.06);
   backdrop-filter: blur(10px);
 }
 .ant-table-wrapper .ant-table {
@@ -376,7 +401,7 @@ h4 {
   backdrop-filter: blur(6px);
 }
 .recharts-default-tooltip {
-  background: #0e1513 !important;
+  background: var(--elevated) !important;
   border: 1px solid rgba(182, 242, 78, 0.25) !important;
   border-radius: 10px !important;
   font-family: var(--mono);

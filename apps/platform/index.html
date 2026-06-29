@@ -14,6 +14,21 @@
       content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' http://localhost:* ws://localhost:*"
     />
     <title>wrud — What R U Doing</title>
+    <!-- Set the theme before first paint (no flash): stored choice, else OS preference. -->
+    <script>
+      (function () {
+        try {
+          var k = localStorage.getItem("wrud_theme");
+          var dark = k
+            ? k === "dark"
+            : matchMedia("(prefers-color-scheme: dark)").matches;
+          document.documentElement.classList.toggle("dark", dark);
+          document.documentElement.style.colorScheme = dark ? "dark" : "light";
+        } catch (e) {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

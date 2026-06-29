@@ -1,25 +1,32 @@
 import { theme as antdTheme, type ThemeConfig } from "antd";
 
-/** wrud "mission control" dark theme - acid-lime signal accent on a near-black canvas. */
-export const wrudTheme: ThemeConfig = {
+export type Mode = "light" | "dark";
+
+/** Accents are shared across both themes; only surfaces/text/borders flip. */
+const accents = {
+  colorInfo: "#5be0d6",
+  colorSuccess: "#7fae33",
+  colorWarning: "#ffb454",
+  colorError: "#ff6b6b",
+  borderRadius: 12,
+  fontFamily: "'Hanken Grotesk', system-ui, -apple-system, sans-serif",
+  fontSize: 14,
+  controlHeight: 38,
+  wireframe: false,
+};
+
+/** wrud "mission control" dark theme - acid-lime signal on a near-black canvas. */
+const dark: ThemeConfig = {
   algorithm: antdTheme.darkAlgorithm,
   token: {
+    ...accents,
     colorPrimary: "#b6f24e",
-    colorInfo: "#5be0d6",
-    colorSuccess: "#b6f24e",
-    colorWarning: "#ffb454",
-    colorError: "#ff6b6b",
     colorBgBase: "#0a0e0d",
     colorTextBase: "#e8efe9",
     colorBgContainer: "#111715",
     colorBgElevated: "#161e1b",
     colorBorder: "rgba(182,242,78,0.10)",
     colorBorderSecondary: "rgba(255,255,255,0.06)",
-    borderRadius: 12,
-    fontFamily: "'Hanken Grotesk', system-ui, -apple-system, sans-serif",
-    fontSize: 14,
-    controlHeight: 38,
-    wireframe: false,
   },
   components: {
     Layout: {
@@ -55,3 +62,55 @@ export const wrudTheme: ThemeConfig = {
     Select: { colorBgContainer: "#0e1513" },
   },
 };
+
+/** Light theme - the same observatory palette on a warm off-white canvas.
+ * Lime stays the brand accent for fills; a deeper green is used where lime
+ * would be illegible on white. */
+const light: ThemeConfig = {
+  algorithm: antdTheme.defaultAlgorithm,
+  token: {
+    ...accents,
+    colorPrimary: "#5f9410", // deep lime-green: legible as a control/link color on white
+    colorBgBase: "#f4f7f0",
+    colorTextBase: "#14201b",
+    colorBgContainer: "#ffffff",
+    colorBgElevated: "#ffffff",
+    colorBorder: "rgba(20,32,27,0.14)",
+    colorBorderSecondary: "rgba(20,32,27,0.08)",
+  },
+  components: {
+    Layout: {
+      siderBg: "#eef2ea",
+      headerBg: "rgba(244,247,240,0.72)",
+      bodyBg: "transparent",
+      headerHeight: 64,
+    },
+    Menu: {
+      itemBg: "transparent",
+      itemSelectedBg: "rgba(95,148,16,0.12)",
+      itemSelectedColor: "#3d630a",
+      itemColor: "#5c6b62",
+      itemHoverColor: "#14201b",
+      itemHoverBg: "rgba(20,32,27,0.04)",
+      itemBorderRadius: 10,
+      itemMarginInline: 10,
+      itemHeight: 44,
+    },
+    Card: { colorBgContainer: "#ffffff", paddingLG: 22, borderRadiusLG: 16 },
+    Table: {
+      headerBg: "rgba(20,32,27,0.03)",
+      headerColor: "#5c6b62",
+      rowHoverBg: "rgba(95,148,16,0.07)",
+      borderColor: "rgba(20,32,27,0.08)",
+      colorBgContainer: "transparent",
+      cellPaddingBlock: 14,
+    },
+    Modal: { contentBg: "#ffffff", headerBg: "#ffffff", borderRadiusLG: 16 },
+    Button: { primaryColor: "#ffffff", fontWeight: 600, borderRadius: 10 },
+    Tag: { defaultBg: "rgba(20,32,27,0.05)", borderRadiusSM: 6 },
+    Input: { colorBgContainer: "#ffffff", activeBorderColor: "#5f9410" },
+    Select: { colorBgContainer: "#ffffff" },
+  },
+};
+
+export const wrudThemes: Record<Mode, ThemeConfig> = { light, dark };
