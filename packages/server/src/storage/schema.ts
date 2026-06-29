@@ -16,10 +16,26 @@ CREATE TABLE IF NOT EXISTS sessions (
   status      TEXT NOT NULL,
   started_at  TEXT NOT NULL,
   ended_at    TEXT,
-  created_at  TEXT NOT NULL
+  created_at  TEXT NOT NULL,
+  -- Live rollup counters (maintained in appendEvents) so token/event filters and the
+  -- sessions list never re-scan events. Added to existing DBs via ALTER in the adapter.
+  event_count   INTEGER NOT NULL DEFAULT 0,
+  input_tokens  INTEGER NOT NULL DEFAULT 0,
+  output_tokens INTEGER NOT NULL DEFAULT 0
 );
-CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions(created_at);
+-- Keyset pagination + range filters order by (created_at, id); this index covers it.
+CREATE INDEX IF NOT EXISTS idx_sessions_created ON sessions(created_at, id);
+CREATE INDEX IF NOT EXISTS idx_sessions_status ON sessions(status);
+
+-- Denormalized dimension index: one row per (session, dim, value). The (dim, value) index
+-- serves both "distinct values for a dim" (facets) and "sessions where dim=value" (filters).
+CREATE TABLE IF NOT EXISTS session_facets (
+  session_id TEXT NOT NULL,
+  dim        TEXT NOT NULL,
+  value      TEXT NOT NULL,
+  PRIMARY KEY (session_id, dim, value)
+);
+CREATE INDEX IF NOT EXISTS idx_facets_dim_value ON session_facets(dim, value);
 
 CREATE TABLE IF NOT EXISTS events (
   session_id TEXT NOT NULL,

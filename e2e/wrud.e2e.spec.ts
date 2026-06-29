@@ -87,6 +87,46 @@ test("full session lifecycle: create key -> session -> events -> summarize -> re
   expect(body.summary.sessionId).toBe(sessionId);
 });
 
+test("facets + reports reflect the seeded session", async ({ request }) => {
+  // Tests share one serial DB; earlier tests add claude-code/claude-opus-4-8 sessions too,
+  // so assert facet VALUES are present (count-agnostic), not exact counts.
+  const hasValue = (rows: any[], value: string) =>
+    Array.isArray(rows) && rows.some((r) => r.value === value);
+
+  const facets = await (
+    await request.get("/v1/facets", { headers: adminAuth })
+  ).json();
+  expect(hasValue(facets.agent, "claude-code")).toBe(true);
+  expect(hasValue(facets.model, "claude-opus-4-8")).toBe(true);
+  expect(hasValue(facets.tool, "Edit")).toBe(true);
+
+  // The same query language filters the sessions list...
+  const filtered = await (
+    await request.get("/v1/sessions?model=claude-opus-4-8&tool=Edit", {
+      headers: adminAuth,
+    })
+  ).json();
+  expect(filtered.items.length).toBeGreaterThan(0);
+  filtered.items.forEach((s: any) =>
+    expect(s.models).toContain("claude-opus-4-8"),
+  );
+  // ...and a contradictory filter returns nothing.
+  const empty = await (
+    await request.get("/v1/sessions?model=does-not-exist", {
+      headers: adminAuth,
+    })
+  ).json();
+  expect(empty.items.length).toBe(0);
+
+  // The report summary aggregates the matched set.
+  const report = await (
+    await request.get("/v1/reports/summary", { headers: adminAuth })
+  ).json();
+  expect(report.total).toBeGreaterThan(0);
+  expect(hasValue(report.byDim.model, "claude-opus-4-8")).toBe(true);
+  expect(report.trend.length).toBeGreaterThan(0);
+});
+
 test("an ingest-scoped key cannot manage keys (403)", async ({ request }) => {
   const keyRes = await request.post("/v1/keys", {
     headers: adminAuth,

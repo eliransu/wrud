@@ -40,6 +40,20 @@ export const api = {
     ).toString();
     return req(`/v1/sessions${qs ? "?" + qs : ""}`, { headers: headers() });
   },
+  facets: (params: Record<string, string> = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v != null && v !== ""),
+    ).toString();
+    return req(`/v1/facets${qs ? "?" + qs : ""}`, { headers: headers() });
+  },
+  reportSummary: (params: Record<string, string> = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v != null && v !== ""),
+    ).toString();
+    return req(`/v1/reports/summary${qs ? "?" + qs : ""}`, {
+      headers: headers(),
+    });
+  },
   getSession: (id: string) => req(`/v1/sessions/${id}`, { headers: headers() }),
   listEvents: (id: string) =>
     req(`/v1/sessions/${id}/events`, { headers: headers() }),

@@ -23,7 +23,7 @@ test("connects with an API key and shows the overview with seeded data", async (
   await connect(page);
   // The seeded session is reflected in the dashboard's telemetry widgets.
   await expect(page.getByText("Sessions").first()).toBeVisible();
-  await expect(page.getByText("Model output tokens")).toBeVisible(); // model usage chart card
+  await expect(page.getByText("Output tokens")).toBeVisible(); // token stat tile
 });
 
 test("lists the seeded session and shows its model-rightsizing insight", async ({
@@ -45,6 +45,21 @@ test("creates an API key and shows the one-time secret", async ({ page }) => {
   await page.getByLabel("Name").fill("e2e-created-key");
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page.getByText("This secret is shown only once.")).toBeVisible();
+});
+
+test("reports page builds a query from facets and shows aggregates", async ({
+  page,
+}) => {
+  await connect(page);
+  await page.getByRole("menuitem", { name: "Reports" }).click();
+  await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
+  // The seeded session is counted in the aggregate, and a chart card renders.
+  await expect(page.getByText("Sessions").first()).toBeVisible();
+  await expect(page.getByText("Sessions over time")).toBeVisible();
+  // Selecting a model facet narrows to the seeded session and persists in the URL.
+  await page.getByRole("combobox").first().click();
+  await page.keyboard.type("claude");
+  await expect(page.getByText("Top models")).toBeVisible();
 });
 
 test("shows the generated lesson", async ({ page }) => {

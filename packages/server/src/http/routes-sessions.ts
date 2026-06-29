@@ -13,11 +13,9 @@ import {
   appendEventsRequestSchema,
   summarizeRequestSchema,
   storeSummaryRequestSchema,
-  sessionStatusSchema,
   sessionPublicSchema,
   newId,
   type Session,
-  type SessionStatus,
   type SessionSummary,
   type StorageAdapter,
 } from "@wrud/shared";
@@ -25,6 +23,7 @@ import type { AppEnv } from "../app.js";
 import { requireScope } from "./auth-middleware.js";
 import { AppError, zodIssues } from "./errors.js";
 import { lessonsFromInsights } from "../analytics/lessons.js";
+import { parseSessionFilter, clampLimit } from "./filter.js";
 
 export const sessionRoutes = new Hono<AppEnv>();
 
@@ -40,14 +39,6 @@ async function persistLessons(
   for (const draft of lessonsFromInsights(summary.insights, sid)) {
     await storage.saveLesson({ id: newId(), createdAt: now, ...draft });
   }
-}
-
-/** Clamp a caller-supplied limit to a positive integer no larger than `max`. */
-function clampLimit(raw: string | undefined, max: number): number | undefined {
-  if (raw === undefined) return undefined;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n <= 0) return undefined;
-  return Math.min(Math.floor(n), max);
 }
 
 function parse<T extends z.ZodType>(schema: T, bodyValue: unknown): z.infer<T> {
@@ -164,22 +155,8 @@ sessionRoutes.put(
 
 sessionRoutes.get("/sessions", requireScope("read"), async (c) => {
   const { storage } = c.get("deps");
-  const q = c.req.query();
-  const status: SessionStatus | undefined =
-    q.status && sessionStatusSchema.safeParse(q.status).success
-      ? (q.status as SessionStatus)
-      : undefined;
-  const page = await storage.listSessions({
-    user: q.user || undefined,
-    agent: q.agent || undefined,
-    model: q.model || undefined,
-    status,
-    from: q.from || undefined,
-    to: q.to || undefined,
-    limit: clampLimit(q.limit, 200),
-    cursor: q.cursor ?? null,
-  });
-  // Enrich each row from its events (model_use) - shows the model live, not only post-summary.
+  const page = await storage.listSessions(parseSessionFilter(c.req.query()));
+  // Enrich each row with its rollup (models from the facet index; tokens/events from counters).
   const stats = await storage.sessionStats(page.items.map((s) => s.id));
   const items = page.items.map((s) => {
     const st = stats[s.id] ?? {

@@ -20,6 +20,8 @@ import {
   errorSchema,
   lessonSchema,
   overviewSchema,
+  facetsResponseSchema,
+  reportSummarySchema,
 } from "@wrud/shared";
 
 /** Convert a zod schema to an inline JSON-Schema object; never throws into doc building. */
@@ -64,6 +66,8 @@ export function buildOpenApiDoc() {
         },
         get: {
           summary: "List sessions (scope: read)",
+          description:
+            "Filterable + keyset-paginated. Each facet dim accepts a comma-separated list (OR within a dim, AND across dims): user, agent, model, tool, mcp, skill, command, file_ext, error_kind, status. Plus from/to (ISO, createdAt range), minInputTokens, minOutputTokens, hasError, limit, cursor.",
           responses: {
             "200": {
               description: "paginated sessions",
@@ -219,6 +223,30 @@ export function buildOpenApiDoc() {
           summary: "Enterprise rollup across all sessions (scope: read)",
           responses: {
             "200": { description: "overview", ...body(overviewSchema) },
+          },
+        },
+      },
+      "/v1/facets": {
+        get: {
+          summary:
+            "Distinct facet values + session counts per dimension (scope: read). ?dim=<dim> for one dimension, ?q=<prefix> for type-ahead.",
+          responses: {
+            "200": {
+              description: "dimension -> [{ value, sessions }]",
+              ...body(facetsResponseSchema),
+            },
+          },
+        },
+      },
+      "/v1/reports/summary": {
+        get: {
+          summary:
+            "Total + per-dimension top values + daily trend over a filter (scope: read). Accepts the same query params as GET /v1/sessions, plus ?top=<N> values per dim.",
+          responses: {
+            "200": {
+              description: "report aggregate",
+              ...body(reportSummarySchema),
+            },
           },
         },
       },
