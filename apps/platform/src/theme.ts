@@ -43,8 +43,13 @@ const dark: ThemeConfig = {
       itemHoverColor: "#e8efe9",
       itemHoverBg: "rgba(255,255,255,0.04)",
       itemBorderRadius: 10,
-      itemMarginInline: 10,
+      itemMarginInline: 6,
       itemHeight: 44,
+      // horizontal (top-bar) variant
+      horizontalItemSelectedColor: "#caff5e",
+      horizontalItemHoverColor: "#e8efe9",
+      horizontalItemBorderRadius: 8,
+      activeBarHeight: 2,
     },
     Card: { colorBgContainer: "#111715", paddingLG: 22, borderRadiusLG: 16 },
     Table: {
@@ -70,13 +75,13 @@ const light: ThemeConfig = {
   algorithm: antdTheme.defaultAlgorithm,
   token: {
     ...accents,
-    colorPrimary: "#5f9410", // deep lime-green: legible as a control/link color on white
-    colorBgBase: "#f4f7f0",
-    colorTextBase: "#14201b",
+    colorPrimary: "#4a7c0e", // deep green: legible as a control/link color on white
+    colorBgBase: "#e8ece1",
+    colorTextBase: "#16231d",
     colorBgContainer: "#ffffff",
     colorBgElevated: "#ffffff",
-    colorBorder: "rgba(20,32,27,0.14)",
-    colorBorderSecondary: "rgba(20,32,27,0.08)",
+    colorBorder: "rgba(20,32,27,0.16)",
+    colorBorderSecondary: "rgba(20,32,27,0.09)",
   },
   components: {
     Layout: {
@@ -87,14 +92,19 @@ const light: ThemeConfig = {
     },
     Menu: {
       itemBg: "transparent",
-      itemSelectedBg: "rgba(95,148,16,0.12)",
+      itemSelectedBg: "rgba(74,124,14,0.12)",
       itemSelectedColor: "#3d630a",
-      itemColor: "#5c6b62",
-      itemHoverColor: "#14201b",
+      itemColor: "#566658",
+      itemHoverColor: "#16231d",
       itemHoverBg: "rgba(20,32,27,0.04)",
       itemBorderRadius: 10,
-      itemMarginInline: 10,
+      itemMarginInline: 6,
       itemHeight: 44,
+      // horizontal (top-bar) variant
+      horizontalItemSelectedColor: "#3d630a",
+      horizontalItemHoverColor: "#16231d",
+      horizontalItemBorderRadius: 8,
+      activeBarHeight: 2,
     },
     Card: { colorBgContainer: "#ffffff", paddingLG: 22, borderRadiusLG: 16 },
     Table: {
@@ -114,3 +124,33 @@ const light: ThemeConfig = {
 };
 
 export const wrudThemes: Record<Mode, ThemeConfig> = { light, dark };
+
+/** Concrete chart colors per theme (recharts needs literal colors, not CSS vars). Dark uses the
+ * acid-lime/cyan signal; light uses the deeper green/teal so bars read on white instead of glaring. */
+export function chartPalette(mode: Mode) {
+  return mode === "dark"
+    ? {
+        accent: "#b6f24e",
+        accent2: "#5be0d6",
+        accentDim: "#7fae33",
+        tick: "#8fa298",
+        status: {
+          summarized: "#b6f24e",
+          open: "#5be0d6",
+          summarizing: "#ffb454",
+          abandoned: "#ff6b6b",
+        } as Record<string, string>,
+      }
+    : {
+        accent: "#4a7c0e",
+        accent2: "#147a72",
+        accentDim: "#6f9a2a",
+        tick: "#566658",
+        status: {
+          summarized: "#4a7c0e",
+          open: "#147a72",
+          summarizing: "#a96a09",
+          abandoned: "#cf3b3b",
+        } as Record<string, string>,
+      };
+}

@@ -13,6 +13,8 @@ import {
 } from "recharts";
 import { api } from "../api";
 import { useApi, LIVE_POLL_MS } from "../hooks";
+import { useThemeMode } from "../theme-mode";
+import { chartPalette } from "../theme";
 import { PageHeader, StatTile, Surface } from "../ui";
 
 /** Compact large numbers so a growing token count never blows out the tile: 803, 12.3K, 1.1M. */
@@ -22,17 +24,6 @@ const compact = (n: number) =>
     maximumFractionDigits: 1,
   }).format(n);
 import { Onboarding } from "../Onboarding";
-
-const STATUS_COLOR: Record<string, string> = {
-  summarized: "#b6f24e",
-  open: "#5be0d6",
-  abandoned: "#ff6b6b",
-};
-const tick = {
-  fill: "#8fa298",
-  fontSize: 12,
-  fontFamily: "JetBrains Mono, monospace",
-};
 
 function ago(iso?: string): string {
   if (!iso) return "";
@@ -45,6 +36,14 @@ function ago(iso?: string): string {
 
 export default function Overview() {
   const nav = useNavigate();
+  const { mode } = useThemeMode();
+  const c = chartPalette(mode);
+  const STATUS_COLOR = c.status;
+  const tick = {
+    fill: c.tick,
+    fontSize: 12,
+    fontFamily: "JetBrains Mono, monospace",
+  };
   const { data, loading } = useApi(() => api.overview(), [], {
     pollMs: LIVE_POLL_MS,
   });
@@ -315,7 +314,7 @@ export default function Overview() {
                 <Tooltip cursor={{ fill: "rgba(182,242,78,0.06)" }} />
                 <Bar dataKey="calls" radius={[0, 8, 8, 0]} barSize={18}>
                   {modelData.map((_: unknown, i: number) => (
-                    <PieCell key={i} fill={i === 0 ? "#b6f24e" : "#5be0d6"} />
+                    <PieCell key={i} fill={i === 0 ? c.accent : c.accent2} />
                   ))}
                 </Bar>
               </BarChart>
@@ -362,7 +361,7 @@ export default function Overview() {
                         height: "100%",
                         borderRadius: 4,
                         width: `${((count as number) / maxAgent) * 100}%`,
-                        background: "linear-gradient(90deg, #7fae33, #b6f24e)",
+                        background: `linear-gradient(90deg, ${c.accentDim}, ${c.accent})`,
                       }}
                     />
                   </span>

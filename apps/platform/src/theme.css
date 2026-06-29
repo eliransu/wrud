@@ -1,22 +1,41 @@
 @import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 /* Light is the default; `.dark` (toggled on <html>) flips to mission-control.
- * --ov is the overlay/hairline base (white on dark, near-black on light), used via
- * rgb(var(--ov) / <alpha>) wherever the old theme hardcoded rgba(255,255,255,…). */
+ * Surfaces, shadows, glows and the canvas wash are all theme-aware variables so light mode
+ * reads as a crisp "observatory on paper" (white cards lifting off a sage canvas) rather than
+ * a pale wash, and dark stays the acid-lime mission-control look. --ov is the overlay/hairline
+ * base, used via rgb(var(--ov) / <alpha>) wherever the old theme hardcoded white. */
 :root {
-  --signal: #4d7c0f; /* deep green - legible accent text on white */
+  --signal: #4a7c0e; /* deep green - legible accent text on white */
   --signal-dim: #5f9410;
-  --amber: #b0730c;
-  --red: #d13c3c;
-  --cyan: #1f9189;
-  --bg: #f4f7f0;
-  --ink: #14201b;
-  --muted: #5c6b62;
+  --amber: #a96a09;
+  --red: #cf3b3b;
+  --cyan: #147a72; /* deeper teal so it reads on white */
+  --bg: #e8ece1; /* sage paper - a touch deeper than white so cards separate */
+  --ink: #16231d;
+  --muted: #566658;
   --elevated: #ffffff;
   --code-str: #3f6212;
   --ov: 20 32 27;
   --dot: 20 32 27;
-  --dot-alpha: 0.05;
+  --dot-alpha: 0.045;
+  /* surfaces lift off the canvas with real shadows in light mode */
+  --surface: #ffffff;
+  --surface-border: rgb(20 32 27 / 0.1);
+  --surface-shadow:
+    0 1px 2px rgba(20, 32, 27, 0.05), 0 12px 28px -10px rgba(20, 32, 27, 0.16);
+  --surface-hover-shadow:
+    0 2px 4px rgba(20, 32, 27, 0.06), 0 18px 36px -12px rgba(20, 32, 27, 0.2);
+  --glow: rgba(
+    74,
+    124,
+    14,
+    0.1
+  ); /* on-brand green corner glow (subtle on white) */
+  --accent-weak: rgba(74, 124, 14, 0.4); /* hover borders */
+  --accent-text-glow: none; /* don't halo text on white - reads muddy */
+  --bg-glow-1: rgba(74, 124, 14, 0.12);
+  --bg-glow-2: rgba(20, 122, 114, 0.1);
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
   --display: "Bricolage Grotesque", system-ui, sans-serif;
 }
@@ -34,6 +53,19 @@
   --ov: 255 255 255;
   --dot: 255 255 255;
   --dot-alpha: 0.035;
+  --surface: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.03),
+    rgba(255, 255, 255, 0)
+  );
+  --surface-border: rgb(255 255 255 / 0.07);
+  --surface-shadow: none;
+  --surface-hover-shadow: none;
+  --glow: rgba(182, 242, 78, 0.16);
+  --accent-weak: rgba(182, 242, 78, 0.3);
+  --accent-text-glow: 0 0 22px rgba(182, 242, 78, 0.35);
+  --bg-glow-1: rgba(182, 242, 78, 0.1);
+  --bg-glow-2: rgba(91, 224, 214, 0.06);
 }
 
 html,
@@ -54,14 +86,10 @@ body {
   background:
     radial-gradient(
       1100px 520px at 80% -10%,
-      rgba(182, 242, 78, 0.1),
+      var(--bg-glow-1),
       transparent 60%
     ),
-    radial-gradient(
-      900px 600px at -5% 105%,
-      rgba(91, 224, 214, 0.06),
-      transparent 55%
-    ),
+    radial-gradient(900px 600px at -5% 105%, var(--bg-glow-2), transparent 55%),
     var(--bg);
   background-attachment: fixed;
 }
@@ -74,7 +102,7 @@ body::before {
   pointer-events: none;
   z-index: 0;
   background-image: radial-gradient(
-    rgb(var(--ov) / 0.035) 1px,
+    rgb(var(--dot) / var(--dot-alpha)) 1px,
     transparent 1px
   );
   background-size: 22px 22px;
@@ -105,7 +133,7 @@ h4 {
 .wd-brand {
   font-family: var(--display);
   font-weight: 800;
-  font-size: 24px;
+  font-size: 22px;
   letter-spacing: -0.04em;
   color: var(--ink);
   display: flex;
@@ -113,34 +141,68 @@ h4 {
   gap: 8px;
 }
 .wd-brand .wd-mascot {
-  width: 1.4em;
-  height: 1.4em;
+  width: 1.5em;
+  height: 1.5em;
   object-fit: contain;
-  margin-right: 2px;
 }
 /* the black-on-transparent telemetry mascot: invert to white only on the dark theme */
 .dark .wd-brand .wd-mascot {
   filter: invert(1);
 }
 
+/* ---- top navigation bar ---- */
+.wd-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  height: 64px;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--surface-border);
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  backdrop-filter: saturate(140%) blur(12px);
+}
+.wd-topbar-inner {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+/* horizontal AntD menu, de-chromed to sit inline in the bar */
+.wd-nav.ant-menu-horizontal {
+  flex: 1;
+  min-width: 0;
+  border-bottom: none !important;
+  background: transparent !important;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 62px;
+}
+.wd-nav.ant-menu-horizontal .ant-menu-item::after {
+  inset-inline: 10px !important; /* keep the active underline snug under the label */
+}
+
 /* ---- stat tile ---- */
 .wd-tile {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgb(var(--ov) / 0.07);
+  border: 1px solid var(--surface-border);
   border-radius: 16px;
-  background: linear-gradient(
-    180deg,
-    rgb(var(--ov) / 0.025),
-    rgb(var(--ov) / 0)
-  );
+  background: var(--surface);
+  box-shadow: var(--surface-shadow);
   padding: 20px 22px;
   transition:
     border-color 0.2s,
+    box-shadow 0.2s,
     transform 0.2s;
 }
 .wd-tile:hover {
-  border-color: rgba(182, 242, 78, 0.3);
+  border-color: var(--accent-weak);
+  box-shadow: var(--surface-hover-shadow);
   transform: translateY(-2px);
 }
 .wd-tile .v {
@@ -152,7 +214,7 @@ h4 {
 }
 .wd-tile .v.accent {
   color: var(--signal);
-  text-shadow: 0 0 22px rgba(182, 242, 78, 0.35);
+  text-shadow: var(--accent-text-glow);
 }
 .wd-tile .k {
   margin-top: 12px;
@@ -165,22 +227,15 @@ h4 {
   width: 96px;
   height: 96px;
   border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    rgba(182, 242, 78, 0.16),
-    transparent 70%
-  );
+  background: radial-gradient(circle, var(--glow), transparent 70%);
 }
 
 /* ---- generic surface card ---- */
 .wd-card {
-  border: 1px solid rgb(var(--ov) / 0.07);
+  border: 1px solid var(--surface-border);
   border-radius: 16px;
-  background: linear-gradient(
-    180deg,
-    rgb(var(--ov) / 0.02),
-    rgb(var(--ov) / 0)
-  );
+  background: var(--surface);
+  box-shadow: var(--surface-shadow);
   padding: 22px;
 }
 .wd-card-title {
@@ -223,7 +278,15 @@ h4 {
   gap: 14px;
   padding: 16px 18px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 180, 84, 0.25);
+  border: 1px solid rgba(169, 106, 9, 0.28);
+  background: linear-gradient(
+    180deg,
+    rgba(169, 106, 9, 0.08),
+    rgba(169, 106, 9, 0)
+  );
+}
+.dark .wd-insight {
+  border-color: rgba(255, 180, 84, 0.25);
   background: linear-gradient(
     180deg,
     rgba(255, 180, 84, 0.07),
@@ -285,7 +348,7 @@ h4 {
 }
 .jt-copy:hover {
   color: var(--signal);
-  border-color: rgba(182, 242, 78, 0.4);
+  border-color: var(--accent-weak);
 }
 .jt-row {
   white-space: pre-wrap;
@@ -372,7 +435,7 @@ h4 {
   border-radius: 8px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: rgba(182, 242, 78, 0.3);
+  background: var(--accent-weak);
 }
 *::-webkit-scrollbar-track {
   background: transparent;
@@ -387,22 +450,12 @@ h4 {
   background: transparent !important;
   border-inline-end: none !important;
 }
-.ant-layout-sider {
-  border-right: 1px solid rgb(var(--ov) / 0.06);
-}
-.ant-layout-header {
-  border-bottom: 1px solid rgb(var(--ov) / 0.06);
-  backdrop-filter: blur(10px);
-}
 .ant-table-wrapper .ant-table {
   background: transparent;
 }
-.ant-card {
-  backdrop-filter: blur(6px);
-}
 .recharts-default-tooltip {
   background: var(--elevated) !important;
-  border: 1px solid rgba(182, 242, 78, 0.25) !important;
+  border: 1px solid var(--accent-weak) !important;
   border-radius: 10px !important;
   font-family: var(--mono);
   font-size: 12px;
