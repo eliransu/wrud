@@ -38,14 +38,15 @@ export function buildSummarizer(opts: SummarizerOptions = {}): Summarizer {
         clock(),
         opts.analyzers ?? [],
       );
-      // Default to the deterministic context sentence; upgrade to the LLM narrative when present.
-      let narrative: string | null = base.narrative;
+      // Narrative comes ONLY from the LLM narrator; stays null (blank) when there's no narrator
+      // or it fails - no deterministic stats-sentence fallback.
+      let narrative: string | null = base.narrative; // null from buildBaseSummary
       if (opts.narrator) {
         try {
           const n = await opts.narrator({ session, summary: base, events });
           if (n && n.trim()) narrative = n.trim();
         } catch {
-          /* keep the deterministic narrative */
+          /* leave narrative null on narrator failure */
         }
       }
       return {

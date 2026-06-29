@@ -152,42 +152,7 @@ export const defaultAnalyzers = (): InsightAnalyzer[] => [
   new ErrorRateAnalyzer(),
 ];
 
-/**
- * A deterministic "context in a sentence" built from stats - so a session is never blank,
- * even without an LLM. An LLM narrator (server or client) overrides this with a nicer prose
- * version when a key is available.
- */
-export function deterministicNarrative(
-  stats: SummaryStats,
-  agent = "agent",
-): string {
-  const dur =
-    stats.durationMs >= 60000
-      ? `${Math.round(stats.durationMs / 60000)}m`
-      : `${Math.max(0, Math.round(stats.durationMs / 1000))}s`;
-  const topTools = Object.entries(stats.toolCalls)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([n, c]) => `${n}x${c}`)
-    .join(", ");
-  const models = stats.models
-    .map((m) => `${m.model} (${m.outputTokens} out tok)`)
-    .join(", ");
-  const parts = [
-    `A ${agent} session over ${dur} with ${stats.eventCount} event${stats.eventCount === 1 ? "" : "s"}`,
-  ];
-  if (topTools) parts.push(`top tools ${topTools}`);
-  if (models) parts.push(`models ${models}`);
-  if (stats.filesTouched.length)
-    parts.push(
-      `${stats.filesTouched.length} file${stats.filesTouched.length === 1 ? "" : "s"} touched`,
-    );
-  if (stats.errorCount)
-    parts.push(`${stats.errorCount} error${stats.errorCount === 1 ? "" : "s"}`);
-  return parts.join("; ") + ".";
-}
-
-/* ---------- base summary (stats + insights + deterministic narrative) ---------- */
+/* ---------- base summary (stats + insights; narrative comes only from the LLM narrator) ---------- */
 export function buildBaseSummary(
   session: Session,
   events: Event[],
@@ -198,7 +163,9 @@ export function buildBaseSummary(
   const base: SessionSummary = {
     sessionId: session.id,
     stats,
-    narrative: deterministicNarrative(stats, session.agent?.name ?? "agent"),
+    // No deterministic narrative - a session with no LLM narrative stays blank rather than
+    // showing a stats-template sentence. The LLM narrator (composite) fills this when present.
+    narrative: null,
     insights: [],
     summarizerVersion: "deterministic@1",
     generatedAt: now.toISOString(),

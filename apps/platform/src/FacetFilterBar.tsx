@@ -114,9 +114,12 @@ export function FacetFilterBar({
           mode="multiple"
           allowClear
           showSearch
-          maxTagCount="responsive"
+          // fixed count, NOT "responsive": responsive uses a ResizeObserver to measure how many
+          // tags fit, which loops (flicker) inside a flex-wrap container whose width depends on
+          // the tags shown. A fixed count + fixed width avoids the measure→render→measure loop.
+          maxTagCount={1}
           placeholder={label}
-          style={{ minWidth: 168 }}
+          style={{ width: 168 }}
           value={value[dim] ?? []}
           onChange={(v: string[]) => set({ [dim]: v } as Partial<FilterState>)}
           options={optionsFor(dim)}

@@ -19,6 +19,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.3] - 2026-06-29
+
+### Fixed
+
+- **Filter dropdowns no longer flicker.** The Sessions/Reports facet selects used AntD's `maxTagCount="responsive"` inside a flex-wrap row, which drove a ResizeObserver measure→render loop once a filter had a selected value. Switched to a fixed tag count + fixed width.
+
+### Changed
+
+- **No deterministic narrative.** A summarized session's narrative now comes only from the LLM narrator; without one it stays blank instead of showing a stats-template sentence ("A … session over N; top tools …"). Stats, models and insights are unchanged.
+
+---
+
 ## [0.5.2] - 2026-06-29
 
 ### Changed

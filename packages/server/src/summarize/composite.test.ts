@@ -37,12 +37,12 @@ const events: Event[] = [
 const clock = () => new Date("2026-06-25T11:00:00.000Z");
 
 describe("buildSummarizer", () => {
-  it("produces deterministic stats and a deterministic context sentence (no narrator)", async () => {
+  it("produces deterministic stats; narrative is null without a narrator", async () => {
     const s = await buildSummarizer({ clock }).summarize(session, events);
     expect(s.stats.eventCount).toBe(2);
     expect(s.insights).toEqual([]);
-    // Context is never blank now - deterministic sentence even without an LLM.
-    expect(s.narrative).toContain("2 events");
+    // No deterministic fallback sentence - narrative comes only from the LLM narrator.
+    expect(s.narrative).toBeNull();
   });
 
   it("attaches insights from analyzers", async () => {
@@ -62,7 +62,7 @@ describe("buildSummarizer", () => {
     expect(s.narrative).toBe("Renamed a variable using Opus.");
   });
 
-  it("falls back to the deterministic context when the narrator throws", async () => {
+  it("leaves narrative null when the narrator throws (stats still produced)", async () => {
     const narrator = async () => {
       throw new Error("network down");
     };
@@ -70,7 +70,7 @@ describe("buildSummarizer", () => {
       session,
       events,
     );
-    expect(s.narrative).toContain("2 events"); // deterministic fallback, not null
+    expect(s.narrative).toBeNull(); // no deterministic fallback
     expect(s.stats.eventCount).toBe(2); // stats still produced
   });
 });
