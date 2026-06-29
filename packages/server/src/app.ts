@@ -20,6 +20,7 @@ import { metaRoutes } from "./http/routes-meta.js";
 import { sessionRoutes } from "./http/routes-sessions.js";
 import { keyRoutes } from "./http/routes-keys.js";
 import { analyticsRoutes } from "./http/routes-analytics.js";
+import { reportRoutes } from "./http/routes-reports.js";
 
 /** Max request body (1 MB) - a 500-event batch is ~100 KB, so this is generous. */
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -106,5 +107,6 @@ export function buildApp(deps: AppDeps) {
   app.route("/v1", sessionRoutes);
   app.route("/v1", keyRoutes);
   app.route("/v1", analyticsRoutes);
+  app.route("/v1", reportRoutes);
   return app;
 }

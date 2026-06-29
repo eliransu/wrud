@@ -4,6 +4,7 @@ import {
   ApiOutlined,
   KeyOutlined,
   BulbOutlined,
+  BarChartOutlined,
 } from "@ant-design/icons";
 import {
   Routes,
@@ -17,12 +18,14 @@ import { useThemeMode } from "./theme-mode";
 import Overview from "./pages/Overview";
 import Sessions from "./pages/Sessions";
 import SessionDetail from "./pages/SessionDetail";
+import Reports from "./pages/Reports";
 import Keys from "./pages/Keys";
 import Lessons from "./pages/Lessons";
 
 const items = [
   { key: "/", label: "Overview", icon: <DashboardOutlined /> },
   { key: "/sessions", label: "Sessions", icon: <ApiOutlined /> },
+  { key: "/reports", label: "Reports", icon: <BarChartOutlined /> },
   { key: "/keys", label: "API Keys", icon: <KeyOutlined /> },
   { key: "/lessons", label: "Lessons", icon: <BulbOutlined /> },
 ];
@@ -30,6 +33,7 @@ const items = [
 const sectionEyebrow: Record<string, string> = {
   "/": "Mission control",
   "/sessions": "Telemetry",
+  "/reports": "Insights",
   "/keys": "Access",
   "/lessons": "Memory",
 };
@@ -120,6 +124,7 @@ export default function App() {
                 <Route path="/" element={<Overview />} />
                 <Route path="/sessions" element={<Sessions />} />
                 <Route path="/sessions/:id" element={<SessionDetail />} />
+                <Route path="/reports" element={<Reports />} />
                 <Route path="/keys" element={<Keys />} />
                 <Route path="/lessons" element={<Lessons />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

@@ -411,3 +411,49 @@ payload }` wire envelope itself - assigning `id`, a monotonic `seq`, and `timest
 Interfaces consumed by phases 2-4 and the hosted adapters (`Summarizer`, `InsightAnalyzer`,
 `LessonSink`, `RateLimiter`, `StorageAdapter`, the read API, the storage contract) are all
 defined and stable in Phase 1, so each later phase builds against a fixed surface.
+
+## Phase 5 — Facet index, smart filters, Reports (this iteration)
+
+**Problem.** Every dimension worth filtering or reporting on (models, tools, skills,
+slash-commands, MCP extensions, files, error kinds) lived only inside `events.payload_json`.
+The `model` filter ran a full-events `json_extract` subquery; agent was an unindexed
+`json_extract`; skills/commands/MCPs were extracted client-side per session and never indexed;
+and the UI filter dropdowns were populated only from the loaded page, so you couldn't
+search-and-select across the whole dataset. The sessions list also fetched all matches and
+sliced in JS.
+
+**Decision — keep SQLite, add an indexed facet layer (not a new engine).** A local-first
+`npx wrud` tool doesn't need Postgres/columnar; it needs the dimensions lifted out of JSON
+into indexed rows. The `StorageAdapter` seam still lets a hosted adapter drop in later.
+
+- **`session_facets(session_id, dim, value)`** — one denormalized row per dimension value.
+  `dim ∈ {user, agent, model, tool, mcp, skill, command, file_ext, error_kind}`. The
+  `(dim, value)` index serves both "distinct values for a dim" (facets) and "sessions where
+  dim=value" (filters). `status` is NOT a facet — it's an indexed column that mutates over the
+  lifecycle; faceting it would mean rewriting rows. Tokens/dates are continuous → range
+  predicates, not facets.
+- **Live rollup counters on the session row** (`event_count`, `input_tokens`, `output_tokens`)
+  maintained inside the existing `appendEvents` transaction (gated on actual insert so duplicate
+  seqs don't double-count). The sessions list and token-range filters read these instead of
+  scanning events.
+- **Maintained incrementally** (createSession → user/agent; appendEvents → event dims; gated),
+  so open sessions are queryable, not just finalized ones. A one-time **backfill** on adapter
+  construction populates facets + counters for any DB written before this feature.
+- **Facet taxonomy is one source of truth** in `packages/shared/src/facets.ts`
+  (`sessionFacets`, `eventFacets`, `eventTokens`), reused by both storage adapters and the backfill.
+
+**Filter language** (`packages/server/src/http/filter.ts`, shared by `/sessions` and `/reports`):
+each dim accepts a comma-separated list — OR within a dim, AND across dims — plus `from`/`to`
+(createdAt range), `minInputTokens`/`minOutputTokens`, `hasError`, and keyset pagination on
+`(created_at, id)` (replaces fetch-all-slice).
+
+**New endpoints (scope: read):**
+- `GET /v1/facets[?dim=&q=]` — distinct values + session counts per dim; `q` is a prefix
+  type-ahead. Powers global search-and-select.
+- `GET /v1/reports/summary` — `{ total, byDim (top-N per dim + status), trend (sessions/day) }`
+  over the same filter. `?top=N` controls values per dim.
+
+**Platform:** `<FacetFilterBar>` (searchable multi-selects from `/facets`) shared by the
+Sessions page and a new **Reports** page. Reports = filter builder → stat tiles + per-dim
+top-N bars + daily-trend line + a drill-down sessions table. Filter state is URL-encoded
+(shareable/bookmarkable); no saved/named reports (deliberately ad-hoc for now).

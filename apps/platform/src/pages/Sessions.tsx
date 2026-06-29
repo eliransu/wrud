@@ -1,10 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { Table, Input, Select, DatePicker, Button, message } from "antd";
+import { useEffect, useState } from "react";
+import { Table, Button, message } from "antd";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { PageHeader, Pill, Surface } from "../ui";
-
-const { RangePicker } = DatePicker;
+import {
+  FacetFilterBar,
+  filterToParams,
+  type FilterState,
+} from "../FacetFilterBar";
 
 const STATUS_TONE: Record<string, string> = {
   open: "cyan",
@@ -13,28 +16,20 @@ const STATUS_TONE: Record<string, string> = {
   abandoned: "red",
 };
 
-type Filters = {
-  user?: string;
-  agent?: string;
-  model?: string;
-  from?: string;
-  to?: string;
-};
-
 const PAGE = 25;
 
 export default function Sessions() {
-  const [filters, setFilters] = useState<Filters>({});
+  const [filters, setFilters] = useState<FilterState>({});
   const [items, setItems] = useState<any[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [more, setMore] = useState(false);
 
-  const params = (extra: Record<string, string> = {}) => {
-    const p: Record<string, string> = { limit: String(PAGE) };
-    for (const [k, v] of Object.entries(filters)) if (v) p[k] = v;
-    return { ...p, ...extra };
-  };
+  const params = (extra: Record<string, string> = {}) => ({
+    limit: String(PAGE),
+    ...filterToParams(filters),
+    ...extra,
+  });
 
   // (re)load page 1 whenever filters change
   useEffect(() => {
@@ -68,66 +63,11 @@ export default function Sessions() {
       .finally(() => setMore(false));
   };
 
-  // option lists derived from what's loaded (server still does the filtering)
-  const agentOpts = useMemo(
-    () => [...new Set(items.map((s) => s.agent?.name).filter(Boolean))],
-    [items],
-  );
-  const modelOpts = useMemo(
-    () => [...new Set(items.flatMap((s) => s.models ?? []).filter(Boolean))],
-    [items],
-  );
-  const set = (patch: Filters) => setFilters((f) => ({ ...f, ...patch }));
-
   return (
     <>
       <PageHeader eyebrow="Telemetry" title="Sessions" />
 
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 10,
-          marginBottom: 16,
-        }}
-      >
-        <Input.Search
-          placeholder="user"
-          allowClear
-          style={{ width: 160 }}
-          defaultValue={filters.user}
-          onSearch={(v) => set({ user: v || undefined })}
-        />
-        <Select
-          placeholder="agent"
-          allowClear
-          style={{ width: 160 }}
-          value={filters.agent}
-          onChange={(v) => set({ agent: v || undefined })}
-          options={[
-            "claude-code",
-            "cursor",
-            ...agentOpts.filter((a) => a !== "claude-code" && a !== "cursor"),
-          ].map((a) => ({ value: a, label: a }))}
-        />
-        <Select
-          placeholder="model"
-          allowClear
-          showSearch
-          style={{ width: 200 }}
-          value={filters.model}
-          onChange={(v) => set({ model: v || undefined })}
-          options={modelOpts.map((m) => ({ value: m, label: m }))}
-        />
-        <RangePicker
-          onChange={(d) =>
-            set({
-              from: d?.[0]?.startOf("day").toISOString(),
-              to: d?.[1]?.endOf("day").toISOString(),
-            })
-          }
-        />
-      </div>
+      <FacetFilterBar value={filters} onChange={setFilters} />
 
       <Surface>
         <Table
