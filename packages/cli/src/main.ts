@@ -31,7 +31,8 @@ Usage:
   wrud hook <record|flush|finalize> [--provider <id>]   (invoked by the agent's hook config)
 
 Supported agents: ${providerIds.join(", ")}.
-Env: WRUD_PORT, WRUD_DB, WRUD_BASE_URL, WRUD_API_KEY, WRUD_ANTHROPIC_KEY, WRUD_NARRATOR_CMD, WRUD_NARRATOR_MODEL
+Env: WRUD_PORT, WRUD_DB, WRUD_BASE_URL, WRUD_API_KEY, WRUD_AGENT_NAME, WRUD_AGENT_VERSION,
+     WRUD_ANTHROPIC_KEY, WRUD_NARRATOR_CMD, WRUD_NARRATOR_MODEL
 `;
 
 const [, , cmd, ...rest] = process.argv;
