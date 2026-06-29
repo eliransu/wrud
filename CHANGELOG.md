@@ -19,6 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.1] - 2026-06-29
+
+### Added
+
+- **Name your agents.** `WRUD_AGENT_NAME` (and optional `WRUD_AGENT_VERSION`) override the auto-detected agent label, so you can tag a session source however you like — e.g. mark a remote box `prod-bot` even though it's really claude-code. Custom names flow straight into the Sessions filters and the Reports dimensions.
+
+### Changed
+
+- **Top navigation instead of a sidebar.** The dashboard nav moved into a sticky top header (brand · sections · theme toggle), giving pages the full width.
+- **Refined light theme.** Light mode went from a flat, pale wash to crisp white cards lifting off a soft sage canvas with real shadows, and the charts now use a deep green/teal palette instead of the dark theme's acid-lime so they read cleanly on white. Dark mode is unchanged.
+
+---
+
 ## [0.5.0] - 2026-06-29
 
 ### Added
