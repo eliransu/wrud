@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.5] - 2026-06-29
+
+### Added
+
+- **Light + dark dashboard theme.** The dashboard now follows your OS `prefers-color-scheme` and adds a sun/moon toggle in the header that persists your choice (`localStorage`). AntD swaps between its light/dark algorithms with palette-matched tokens, and the theme is applied before first paint so there's no flash. (The landing site got the same treatment.)
+
+---
+
 ## [0.4.4] - 2026-06-28
 
 ### Fixed
