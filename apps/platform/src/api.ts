@@ -21,6 +21,11 @@ const headers = (extra: Record<string, string> = {}) => ({
 async function req(path: string, init?: RequestInit): Promise<any> {
   const r = await fetch(BASE + path, init);
   if (!r.ok) {
+    // Bad/expired/insufficient key -> drop it and bounce to the Connect screen.
+    if (r.status === 401 || r.status === 403) {
+      localStorage.removeItem("wrud_key");
+      window.dispatchEvent(new Event("wrud:unauthorized"));
+    }
     const body = await r.text().catch(() => "");
     throw new Error(`${path} -> ${r.status} ${body}`);
   }

@@ -59,6 +59,55 @@ function wireProvider(
   }
 }
 
+/**
+ * Quiet, idempotent auto-wire run by `npx @wrud/cli` on startup so users don't have to run
+ * `install-hooks` separately. Wires every installed agent at USER scope, but only touches a
+ * config that doesn't already have wrud's hooks - so it's a no-op once set up, and never runs
+ * the verbose `doctor` pass. Failures are swallowed: the server must come up regardless.
+ */
+export async function autoInstallHooks(cliPath: string): Promise<void> {
+  try {
+    const ids = installedProviderIds();
+    if (ids.length === 0) return;
+    ensureHome();
+    await ensureToken(INGEST_TOKEN_FILE, "wrud-hooks-ingest", ["ingest"]);
+
+    const wired: string[] = [];
+    const already: string[] = [];
+    for (const id of ids) {
+      const provider = getProvider(id);
+      const settingsPath = provider.settingsPath("user");
+      let settings: any = {};
+      if (existsSync(settingsPath)) {
+        try {
+          settings = JSON.parse(readFileSync(settingsPath, "utf8") || "{}");
+        } catch {
+          continue; // unreadable / non-JSON config - never clobber it
+        }
+      }
+      if (provider.hasWrudHooks(settings)) {
+        already.push(provider.label);
+        continue;
+      }
+      const cmdFor = (sub: HookSub) =>
+        `"${process.execPath}" "${cliPath}" hook ${sub} --provider ${provider.id}`;
+      provider.mergeHooks(settings, cmdFor);
+      mkdirSync(dirname(settingsPath), { recursive: true });
+      writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+      wired.push(provider.label);
+    }
+
+    if (wired.length)
+      console.log(
+        `   Hooks wired: ${wired.join(", ")} - restart your agent to load them.`,
+      );
+    else if (already.length)
+      console.log(`   Hooks: already wired (${already.join(", ")}).`);
+  } catch {
+    /* auto-wire is best-effort - never block the server on it */
+  }
+}
+
 export async function runInstallHooks(
   args: string[],
   cliPath: string,

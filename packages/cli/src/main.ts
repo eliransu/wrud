@@ -21,7 +21,8 @@ const CLI_PATH = fileURLToPath(import.meta.url); // dist/cli.mjs after bundling
 const USAGE = `wrud - local-first recorder for AI-agent sessions
 
 Usage:
-  wrud                              start the server + dashboard (one origin)
+  wrud [--no-install-hooks]         start the server + dashboard (one origin); auto-wires
+                                    your installed agents unless --no-install-hooks
   wrud doctor                       verify capture works end-to-end
   wrud install-hooks [--agent <${providerIds.join("|")}>] [--user|--project]
                                     wire your installed agents (auto-detected; --agent picks one)

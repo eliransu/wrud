@@ -1,7 +1,28 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
-import { Button, Input } from "antd";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import { App, Button, Input } from "antd";
 
 const STORAGE_KEY = "wrud_key";
+
+// `npx @wrud/cli` opens the dashboard at /?key=<token>. Adopt it, persist it, and strip it
+// from the URL immediately so the token never lingers in the address bar, history, or a share.
+(function adoptKeyFromUrl() {
+  try {
+    const u = new URL(window.location.href);
+    const k = u.searchParams.get("key");
+    if (!k) return;
+    localStorage.setItem(STORAGE_KEY, k);
+    u.searchParams.delete("key");
+    window.history.replaceState({}, "", u.pathname + u.search + u.hash);
+  } catch {
+    /* non-browser or malformed URL - ignore */
+  }
+})();
 
 interface AuthValue {
   apiKey: string;
@@ -16,6 +37,7 @@ export const useAuth = (): AuthValue => {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { message } = App.useApp();
   const [apiKey, setKey] = useState<string>(
     () => localStorage.getItem(STORAGE_KEY) ?? "",
   );
@@ -27,6 +49,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEY);
     setKey("");
   };
+
+  // A 401/403 from any API call means the stored key is missing, revoked, or wrong -
+  // drop it and fall back to the Connect screen (api.ts dispatches this event).
+  useEffect(() => {
+    const onUnauthorized = () =>
+      setKey((cur) => {
+        if (cur) message.error("Your API key was rejected - please reconnect.");
+        localStorage.removeItem(STORAGE_KEY);
+        return "";
+      });
+    window.addEventListener("wrud:unauthorized", onUnauthorized);
+    return () =>
+      window.removeEventListener("wrud:unauthorized", onUnauthorized);
+  }, [message]);
+
   return (
     <Ctx.Provider value={{ apiKey, setApiKey, clear }}>{children}</Ctx.Provider>
   );
