@@ -26,6 +26,14 @@ import {
   ensureToken,
   http,
 } from "./env.js";
+import { autoInstallHooks } from "./install-hooks.js";
+
+/** Dashboard URL pre-loaded with the token so the browser connects automatically;
+ * the dashboard strips ?key=... from the address bar once it's adopted it. */
+const keyedUrl = (port: number, token: string) =>
+  `http://localhost:${port}/?key=${encodeURIComponent(token)}`;
+
+const skipHooks = () => process.argv.includes("--no-install-hooks");
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -75,7 +83,7 @@ function banner(
       `   Open      : ${url}   ${opened ? "(opening in your browser)" : ""}`,
       `   API docs  : ${url}/docs        -   DB: ${DB}`,
       "",
-      "   Token (scopes: admin, read, ingest) - paste on the Connect screen:",
+      "   Token (admin, read, ingest) - the browser opens already connected; paste this to connect elsewhere:",
       "",
       `       ${token}`,
       "",
@@ -99,9 +107,9 @@ export async function runServer(cliPath: string): Promise<void> {
       "read",
       "ingest",
     ]);
-    const url = `http://localhost:${PORT}`;
-    openBrowser(url);
+    openBrowser(keyedUrl(PORT, token));
     banner(PORT, token, true, true);
+    if (!skipHooks()) await autoInstallHooks(cliPath);
     return;
   }
 
@@ -140,9 +148,9 @@ export async function runServer(cliPath: string): Promise<void> {
   const MAX_PORT_TRIES = 5;
   const startOn = (port: number, attempt: number): void => {
     const server = serve({ fetch: app.fetch, port }, (info) => {
-      const url = `http://localhost:${info.port}`;
-      openBrowser(url);
+      openBrowser(keyedUrl(info.port, token));
       banner(info.port, token, true, false);
+      if (!skipHooks()) void autoInstallHooks(cliPath);
     });
     server.on("error", (err: NodeJS.ErrnoException) => {
       if (err.code === "EADDRINUSE" && attempt < MAX_PORT_TRIES) {

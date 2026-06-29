@@ -24,6 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Light + dark dashboard theme.** The dashboard now follows your OS `prefers-color-scheme` and adds a sun/moon toggle in the header that persists your choice (`localStorage`). AntD swaps between its light/dark algorithms with palette-matched tokens, and the theme is applied before first paint so there's no flash. (The landing site got the same treatment.)
+- **One-command setup.** `npx @wrud/cli` now auto-wires your installed agents' hooks on startup (idempotent; only touches a config that isn't already wired). Skip it with `--no-install-hooks`; `install-hooks` is still there for explicit/`--project` use and end-to-end verification.
+- **Auto-connect the dashboard.** The browser opens at `/?key=<token>`, so the dashboard connects without pasting. The token is adopted, persisted to this browser, and immediately stripped from the URL.
+
+### Changed
+
+- **The dashboard bounces to the Connect screen on `401`/`403`.** A rejected or expired key is cleared and you're returned to Connect with a notice, instead of the page silently failing to load.
 
 ---
 
