@@ -33,13 +33,22 @@ function wireProvider(
   console.log(`    settings: ${settingsPath}`);
 
   const settings: any = existsSync(settingsPath)
-    ? JSON.parse(readFileSync(settingsPath, "utf8") || "{}")
-    : {};
+    ? provider.parseSettings
+      ? provider.parseSettings(readFileSync(settingsPath, "utf8"))
+      : JSON.parse(readFileSync(settingsPath, "utf8") || "{}")
+    : provider.parseSettings
+      ? provider.parseSettings("")
+      : {};
   const cmdFor = (sub: HookSub) =>
     `"${process.execPath}" "${cliPath}" hook ${sub} --provider ${provider.id}`;
   provider.mergeHooks(settings, cmdFor);
   mkdirSync(dirname(settingsPath), { recursive: true });
-  writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+  writeFileSync(
+    settingsPath,
+    provider.formatSettings
+      ? provider.formatSettings(settings)
+      : JSON.stringify(settings, null, 2) + "\n",
+  );
   console.log(
     "    wired: start/prompt/tool -> record, reply -> flush, end -> finalize",
   );
@@ -80,10 +89,15 @@ export async function autoInstallHooks(cliPath: string): Promise<void> {
       let settings: any = {};
       if (existsSync(settingsPath)) {
         try {
-          settings = JSON.parse(readFileSync(settingsPath, "utf8") || "{}");
+          const raw = readFileSync(settingsPath, "utf8");
+          settings = provider.parseSettings
+            ? provider.parseSettings(raw)
+            : JSON.parse(raw || "{}");
         } catch {
-          continue; // unreadable / non-JSON config - never clobber it
+          continue; // unreadable config - never clobber it
         }
+      } else if (provider.parseSettings) {
+        settings = provider.parseSettings("");
       }
       if (provider.hasWrudHooks(settings)) {
         already.push(provider.label);
@@ -93,7 +107,12 @@ export async function autoInstallHooks(cliPath: string): Promise<void> {
         `"${process.execPath}" "${cliPath}" hook ${sub} --provider ${provider.id}`;
       provider.mergeHooks(settings, cmdFor);
       mkdirSync(dirname(settingsPath), { recursive: true });
-      writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n");
+      writeFileSync(
+        settingsPath,
+        provider.formatSettings
+          ? provider.formatSettings(settings)
+          : JSON.stringify(settings, null, 2) + "\n",
+      );
       wired.push(provider.label);
     }
 
