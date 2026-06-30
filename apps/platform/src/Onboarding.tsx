@@ -24,7 +24,7 @@ export function CopyCmd({ cmd }: { cmd: string }) {
         borderRadius: 10,
         border: "1px solid rgba(255,255,255,0.1)",
         background: "rgba(10,14,13,0.6)",
-        fontFamily: "JetBrains Mono, monospace",
+        fontFamily: "JetBrains Mono Variable, monospace",
         fontSize: 13,
       }}
     >

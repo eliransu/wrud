@@ -36,7 +36,7 @@ type FacetCount = { value: string; sessions: number };
 const axisTick = (c: Palette) => ({
   fill: c.tick,
   fontSize: 12,
-  fontFamily: "JetBrains Mono, monospace",
+  fontFamily: "JetBrains Mono Variable, monospace",
 });
 
 /** Horizontal top-N bars for one dimension's aggregate. */

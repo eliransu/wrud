@@ -42,7 +42,7 @@ export default function Overview() {
   const tick = {
     fill: c.tick,
     fontSize: 12,
-    fontFamily: "JetBrains Mono, monospace",
+    fontFamily: "JetBrains Mono Variable, monospace",
   };
   const { data, loading } = useApi(() => api.overview(), [], {
     pollMs: LIVE_POLL_MS,

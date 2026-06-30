@@ -19,6 +19,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.4] - 2026-06-30
+
+### Fixed
+
+- **Dashboard fonts load offline / under CSP.** Self-hosted the fonts (JetBrains Mono, Hanken Grotesk, Bricolage Grotesque, via `@fontsource`) instead of `@import`-ing Google Fonts — which the dashboard's no-egress CSP blocked, leaving it on fallback fonts. The intended typography now renders, and nothing leaves your machine.
+
+### Changed
+
+- **Top nav uses the regular sans font** (was monospace, which looked out of place).
+- **Sessions list keeps a single-line row for models** — a session with several models shows the first plus a `+N` hover popover listing them all, instead of stacking chips and growing the row height.
+- **The whole Sessions row is clickable** (opens the session), not just the id cell.
+
+---
+
 ## [0.5.3] - 2026-06-29
 
 ### Fixed

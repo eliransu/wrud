@@ -9,7 +9,7 @@ const accents = {
   colorWarning: "#ffb454",
   colorError: "#ff6b6b",
   borderRadius: 12,
-  fontFamily: "'Hanken Grotesk', system-ui, -apple-system, sans-serif",
+  fontFamily: "'Hanken Grotesk Variable', system-ui, -apple-system, sans-serif",
   fontSize: 14,
   controlHeight: 38,
   wireframe: false,

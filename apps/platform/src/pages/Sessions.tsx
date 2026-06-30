@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { Table, Button, message } from "antd";
-import { Link } from "react-router-dom";
+import { useEffect, useState, type CSSProperties } from "react";
+import { Table, Button, message, Popover } from "antd";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { PageHeader, Pill, Surface } from "../ui";
 import {
@@ -16,6 +16,17 @@ const STATUS_TONE: Record<string, string> = {
   abandoned: "red",
 };
 
+/** Small model chip - theme-aware (rgb(var(--ov)) works on both light + dark). */
+const chip: CSSProperties = {
+  fontSize: 11,
+  padding: "2px 8px",
+  borderRadius: 6,
+  background: "rgb(var(--ov) / 0.06)",
+  border: "1px solid rgb(var(--ov) / 0.12)",
+  color: "var(--cyan)",
+  whiteSpace: "nowrap",
+};
+
 const PAGE = 25;
 
 export default function Sessions() {
@@ -24,6 +35,7 @@ export default function Sessions() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [more, setMore] = useState(false);
+  const nav = useNavigate();
 
   const params = (extra: Record<string, string> = {}) => ({
     limit: String(PAGE),
@@ -83,18 +95,19 @@ export default function Sessions() {
           dataSource={items}
           pagination={false}
           locale={{ emptyText: "No sessions match" }}
+          // whole row navigates to the session (not just the id cell)
+          onRow={(r: any) => ({
+            onClick: () => nav(`/sessions/${r.id}`),
+            style: { cursor: "pointer" },
+          })}
           columns={[
             {
               title: "Session",
               dataIndex: "id",
               render: (id: string) => (
-                <Link
-                  to={`/sessions/${id}`}
-                  className="wd-mono"
-                  style={{ color: "var(--signal)" }}
-                >
+                <span className="wd-mono" style={{ color: "var(--signal)" }}>
                   {id.slice(0, 8)}...
-                </Link>
+                </span>
               ),
             },
             {
@@ -122,27 +135,61 @@ export default function Sessions() {
                 const models: string[] = r.models ?? [];
                 if (models.length === 0)
                   return <span style={{ color: "var(--muted)" }}>-</span>;
+                const rest = models.length - 1;
+                // one line, fixed height: first model + a "+N" popover for the rest
                 return (
                   <span
-                    style={{ display: "inline-flex", gap: 6, flexWrap: "wrap" }}
+                    style={{
+                      display: "inline-flex",
+                      gap: 6,
+                      alignItems: "center",
+                      whiteSpace: "nowrap",
+                    }}
                   >
-                    {models.map((m) => (
-                      <span
-                        key={m}
-                        className="wd-mono"
-                        title={m}
-                        style={{
-                          fontSize: 11,
-                          padding: "2px 8px",
-                          borderRadius: 6,
-                          background: "rgba(255,255,255,0.05)",
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          color: "var(--cyan)",
-                        }}
+                    <span
+                      className="wd-mono"
+                      title={models[0]}
+                      style={{
+                        ...chip,
+                        maxWidth: 150,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {models[0]}
+                    </span>
+                    {rest > 0 && (
+                      <Popover
+                        trigger="hover"
+                        content={
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 6,
+                            }}
+                          >
+                            {models.map((m) => (
+                              <span
+                                key={m}
+                                className="wd-mono"
+                                style={{ fontSize: 12, color: "var(--cyan)" }}
+                              >
+                                {m}
+                              </span>
+                            ))}
+                          </div>
+                        }
                       >
-                        {m}
-                      </span>
-                    ))}
+                        <span
+                          className="wd-mono"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ ...chip, cursor: "pointer" }}
+                        >
+                          +{rest}
+                        </span>
+                      </Popover>
+                    )}
                   </span>
                 );
               },
