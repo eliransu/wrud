@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.5] - 2026-06-30
+
+### Changed
+
+- **Sessions `+N` models indicator uses the browser's native tooltip** instead of a popover component. Hovering the `+N` chip still lists the other models; the markup is smaller and drops the extra UI dependency.
+
+---
+
 ## [0.5.4] - 2026-06-30
 
 ### Fixed
