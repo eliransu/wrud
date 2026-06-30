@@ -45,6 +45,39 @@ describe("claude-code removeHooks", () => {
   });
 });
 
+describe("codex hooks", () => {
+  const p = getProvider("codex");
+
+  it("round-trips a TOML config and preserves user settings", () => {
+    const s: any = p.parseSettings?.('model = "gpt-5"\n');
+    p.mergeHooks(s, cmdFor);
+    expect(p.hasWrudHooks(s)).toBe(true);
+    expect(s.raw).toContain('model = "gpt-5"');
+    expect(s.raw).toContain('notify = ["sh", "-lc",');
+    expect(p.removeHooks(s)).toBe(true);
+    expect(p.hasWrudHooks(s)).toBe(false);
+    expect(s.raw.trim()).toBe('model = "gpt-5"');
+  });
+
+  it("normalizes Codex notification payloads as assistant messages", () => {
+    expect(
+      p.normalize({
+        type: "agent-turn-complete",
+        session_id: "abc",
+        cwd: "/repo",
+        model: "gpt-5",
+        last_assistant_message: "done",
+      }),
+    ).toEqual({
+      kind: "assistant_msg",
+      sessionId: "abc",
+      cwd: "/repo",
+      model: "gpt-5",
+      assistantText: "done",
+    });
+  });
+});
+
 describe("cursor removeHooks", () => {
   const p = getProvider("cursor");
 

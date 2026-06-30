@@ -39,6 +39,8 @@ export interface ProviderSpec {
   label: string;
   agentName: string; // recorded as session.agent.name
   settingsPath(scope: "user" | "project"): string;
+  parseSettings?(raw: string): any;
+  formatSettings?(settings: any): string;
   /** Merge wrud's hooks into the agent's settings object (returns it). cmdFor(sub) builds the
    * full shell command for a given wrud hook subcommand. Idempotent: prior wrud entries are
    * stripped first so re-running doesn't stack duplicates. */
@@ -272,8 +274,65 @@ const cursor: ProviderSpec = {
   },
 };
 
+/* ---------------------------------------------------------------------------------- codex -- */
+const codex: ProviderSpec = {
+  id: "codex",
+  label: "OpenAI Codex CLI",
+  agentName: "codex",
+  settingsPath: (scope) =>
+    scope === "project"
+      ? join(process.cwd(), ".codex", "config.toml")
+      : join(homedir(), ".codex", "config.toml"),
+  parseSettings: (raw) => ({ raw }),
+  formatSettings: (settings) =>
+    `${String(settings.raw ?? "").replace(/\s*$/u, "")}\n`,
+  mergeHooks(settings, cmdFor) {
+    const lines = String(settings.raw ?? "").split(/\r?\n/u);
+    const kept = lines.filter(
+      (line) => !/notify\s*=.*(?:wrud|cli\.mjs)/.test(line),
+    );
+    const command = cmdFor("flush").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    kept.push(`notify = ["sh", "-lc", "${command}"]`);
+    settings.raw = kept
+      .filter((line, index, arr) => line.trim() || index < arr.length - 1)
+      .join("\n");
+    return settings;
+  },
+  removeHooks(settings) {
+    const before = String(settings.raw ?? "");
+    const after = before
+      .split(/\r?\n/u)
+      .filter((line) => !/notify\s*=.*(?:wrud|cli\.mjs)/.test(line))
+      .join("\n");
+    settings.raw = after;
+    return after !== before;
+  },
+  hasWrudHooks: (settings) =>
+    /notify\s*=.*(?:wrud|cli\.mjs)/.test(String(settings?.raw ?? "")),
+  isInstalled: () => existsSync(join(homedir(), ".codex")),
+  normalize(p) {
+    const sid = String(
+      p.session_id ?? p.conversation_id ?? p.thread_id ?? "codex",
+    );
+    if (p.type === "agent-turn-complete" || p.type === "turn-complete") {
+      return {
+        kind: "assistant_msg",
+        sessionId: sid,
+        cwd: p.cwd,
+        model: p.model,
+        assistantText:
+          typeof p.last_assistant_message === "string"
+            ? p.last_assistant_message
+            : undefined,
+      };
+    }
+    return { kind: "ignore", sessionId: sid };
+  },
+};
+
 const REGISTRY: Record<string, ProviderSpec> = {
   "claude-code": claudeCode,
+  codex,
   cursor,
 };
 
