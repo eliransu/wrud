@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { Table, Button, message, Popover } from "antd";
+import { Table, Button, message } from "antd";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { PageHeader, Pill, Surface } from "../ui";
@@ -159,36 +159,13 @@ export default function Sessions() {
                       {models[0]}
                     </span>
                     {rest > 0 && (
-                      <Popover
-                        trigger="hover"
-                        content={
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 6,
-                            }}
-                          >
-                            {models.map((m) => (
-                              <span
-                                key={m}
-                                className="wd-mono"
-                                style={{ fontSize: 12, color: "var(--cyan)" }}
-                              >
-                                {m}
-                              </span>
-                            ))}
-                          </div>
-                        }
+                      <span
+                        className="wd-mono"
+                        title={models.slice(1).join("\n")}
+                        style={chip}
                       >
-                        <span
-                          className="wd-mono"
-                          onClick={(e) => e.stopPropagation()}
-                          style={{ ...chip, cursor: "pointer" }}
-                        >
-                          +{rest}
-                        </span>
-                      </Popover>
+                        +{rest}
+                      </span>
                     )}
                   </span>
                 );
