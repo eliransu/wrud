@@ -35,7 +35,7 @@ can right-size your model choices instead of paying top-tier rates to rename a v
 
 <div align="center">
 
-<img src="docs/assets/overview.png" alt="wrud Overview dashboard" width="820" />
+<img src="docs/assets/demo.gif" alt="wrud dashboard - sessions, per-model tokens, and a right-sizing flag" width="820" />
 
 </div>
 
