@@ -28,7 +28,10 @@ and assistant responses. At session end a detached background worker reads the t
 writes a plain-language recap. Recurring patterns across sessions become **lessons** you can
 feed back as agent memory.
 
-**No cloud account. No telemetry. Nothing leaves your machine.**
+It also flags where a **frontier model did trivial work** a smaller one could have done - so you
+can right-size your model choices instead of paying top-tier rates to rename a variable.
+
+**No cloud account. No telemetry. Nothing leaves your machine** - just `npx @wrud/cli`.
 
 <div align="center">
 
@@ -287,7 +290,9 @@ npm run e2e                           # Playwright: boots API + platform, API + 
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. Short version:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. New here? Start with a
+[**good first issue**](https://github.com/eliransu/wrud/labels/good%20first%20issue) - e.g. adding
+a new agent provider is a single registry entry plus a doc. Short version:
 
 - **The contract lives in `packages/shared`.** Change behavior there first (Zod schemas ->
   types -> OpenAPI); the server, SDK, and platform follow.
