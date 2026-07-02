@@ -2,10 +2,10 @@
  * Static list-price table (USD per million tokens) for the ~$ cost estimates shown in the
  * dashboard. Estimates are deliberately approximate:
  *
- * - Cache discounts are NOT modeled. Providers bill cache reads at ~0.1x the input rate,
- *   and wrud's inputTokens fold cache reads in at full weight (see cli transcript
- *   aggregation) - so for cache-heavy agents like Claude Code the estimate is an UPPER
- *   BOUND on the real bill.
+ * - Cache discounts ARE modeled when the usage record carries cacheReadTokens /
+ *   cacheCreationTokens (subsets of inputTokens, from the cli transcript parser): reads at
+ *   0.1x the input rate, creation at 1.25x (Anthropic 5-min-TTL rates). Records without the
+ *   split (older data, live counters) price all input at full weight - an UPPER BOUND.
  * - Context-length tiers (Gemini Pro >200k) and batch discounts are not modeled either.
  *
  * Prices verified 2026-07-02 against the providers' official pricing pages.
@@ -82,12 +82,43 @@ export function priceForModel(model: string): ModelPrice | undefined {
   return undefined;
 }
 
+// ponytail: Anthropic 5-min-TTL cache rates applied to every provider; only the Anthropic
+// transcript parser emits the cache split today, so nothing else is mispriced.
+const CACHE_READ_MULT = 0.1;
+const CACHE_CREATION_MULT = 1.25;
+
+/**
+ * Input tokens re-weighted at cache rates - the billable-input equivalent. Without a cache
+ * split this is just inputTokens (full weight, upper bound).
+ */
+export function effectiveInputTokens(m: {
+  inputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
+}): number {
+  const read = m.cacheReadTokens ?? 0;
+  const creation = m.cacheCreationTokens ?? 0;
+  return (
+    Math.max(0, m.inputTokens - read - creation) +
+    read * CACHE_READ_MULT +
+    creation * CACHE_CREATION_MULT
+  );
+}
+
 /**
  * ~$ for a set of per-model token counts. Returns null when any model that actually used
  * tokens has no known price - a partial sum would read as "the whole session cost $0.02".
+ * cacheReadTokens/cacheCreationTokens are SUBSETS of inputTokens; when present, those
+ * portions are billed at cache rates and only the remainder at the full input rate.
  */
 export function estimateCostUsd(
-  models: Array<{ model: string; inputTokens: number; outputTokens: number }>,
+  models: Array<{
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
+  }>,
 ): number | null {
   let total = 0;
   let priced = false;
@@ -96,7 +127,9 @@ export function estimateCostUsd(
     const p = priceForModel(m.model);
     if (!p) return null;
     total +=
-      (m.inputTokens * p.inputPerMTok + m.outputTokens * p.outputPerMTok) / 1e6;
+      (effectiveInputTokens(m) * p.inputPerMTok +
+        m.outputTokens * p.outputPerMTok) /
+      1e6;
     priced = true;
   }
   return priced ? total : null;

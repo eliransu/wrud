@@ -12,7 +12,7 @@ import type {
   Insight,
   InsightAnalyzer,
 } from "./index.js";
-import { estimateCostUsd } from "./pricing.js";
+import { effectiveInputTokens, estimateCostUsd } from "./pricing.js";
 
 /**
  * Fixed category enum for session classification - mirrors Anthropic's published Claude
@@ -38,7 +38,14 @@ export function deterministicStats(events: Event[]): SummaryStats {
   const filesTouched = new Set<string>();
   const models = new Map<
     string,
-    { model: string; calls: number; inputTokens: number; outputTokens: number }
+    {
+      model: string;
+      calls: number;
+      inputTokens: number;
+      outputTokens: number;
+      cacheReadTokens: number;
+      cacheCreationTokens: number;
+    }
   >();
   let errorCount = 0;
   let messageCount = 0;
@@ -63,11 +70,15 @@ export function deterministicStats(events: Event[]): SummaryStats {
           calls: 0,
           inputTokens: 0,
           outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 0,
         };
         // A model_use event may aggregate many underlying calls (payload.calls); default 1.
         m.calls += e.payload.calls ?? 1;
         m.inputTokens += e.payload.inputTokens ?? 0;
         m.outputTokens += e.payload.outputTokens ?? 0;
+        m.cacheReadTokens += e.payload.cacheReadTokens ?? 0;
+        m.cacheCreationTokens += e.payload.cacheCreationTokens ?? 0;
         models.set(e.payload.model, m);
         break;
       }
@@ -135,8 +146,9 @@ export class ModelRightsizingAnalyzer implements InsightAnalyzer {
       if (m.outputTokens <= 0 || m.outputTokens > this.t.maxOutputTokens)
         continue;
       const est = estimateCostUsd([m]);
+      // Same cache-aware input weighting as the real estimate, or the comparison skews.
       const low =
-        (m.inputTokens * LOW_TIER_IN_PER_M +
+        (effectiveInputTokens(m) * LOW_TIER_IN_PER_M +
           m.outputTokens * LOW_TIER_OUT_PER_M) /
         1e6;
       out.push({

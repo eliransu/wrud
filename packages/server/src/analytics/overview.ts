@@ -36,6 +36,8 @@ export async function computeOverview(
       calls: number;
       inputTokens: number;
       outputTokens: number;
+      cacheReadTokens: number;
+      cacheCreationTokens: number;
     }
   >();
   const insightsByType: Record<string, number> = {};
@@ -51,11 +53,15 @@ export async function computeOverview(
         calls: 0,
         inputTokens: 0,
         outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
       };
       agg.sessions += 1;
       agg.calls += m.calls;
       agg.inputTokens += m.inputTokens;
       agg.outputTokens += m.outputTokens;
+      agg.cacheReadTokens += m.cacheReadTokens ?? 0;
+      agg.cacheCreationTokens += m.cacheCreationTokens ?? 0;
       models.set(m.model, agg);
     }
     for (const i of summary.insights) {

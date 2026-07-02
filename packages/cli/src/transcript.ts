@@ -17,6 +17,8 @@ interface BufferLine {
   model?: string;
   inputTokens?: number;
   outputTokens?: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
   calls?: number;
   cwd?: string;
 }
@@ -63,6 +65,8 @@ export function bufferToEvents(lines: BufferLine[]): BufferedEvent[] {
           model: l.model,
           inputTokens: l.inputTokens,
           outputTokens: l.outputTokens,
+          cacheReadTokens: l.cacheReadTokens,
+          cacheCreationTokens: l.cacheCreationTokens,
           calls: l.calls ?? 1,
         },
       };
@@ -79,8 +83,10 @@ export function bufferToEvents(lines: BufferLine[]): BufferedEvent[] {
 
 /**
  * Extract model + token usage from an agent transcript (Anthropic-style usage records). Two passes:
- *   1. dedup by message id, cache-aware (input = input + cache_creation + cache_read), keeping
- *      the most-complete sighting of each assistant message (streaming logs partials first);
+ *   1. dedup by message id, cache-aware (inputTokens = input + cache_creation + cache_read;
+ *      the cache parts are ALSO kept as separate subsets so pricing can bill them at cache
+ *      rates), keeping the most-complete sighting of each assistant message (streaming logs
+ *      partials first);
  *   2. AGGREGATE per model into ONE record carrying summed tokens + a `calls` count.
  * This collapses a long session's hundreds of per-message records into one model_use event per
  * model (the summary already reports per-model totals), instead of bloating the event log.
@@ -89,7 +95,13 @@ export function transcriptToUsage(transcriptText: string): BufferLine[] {
   const lines = transcriptText.split("\n").filter(Boolean);
   const byId = new Map<
     string,
-    { model: string; input: number; output: number }
+    {
+      model: string;
+      input: number;
+      output: number;
+      cacheRead: number;
+      cacheCreation: number;
+    }
   >();
   for (const raw of lines) {
     let e: any;
@@ -101,15 +113,20 @@ export function transcriptToUsage(transcriptText: string): BufferLine[] {
     const m = e.message;
     if (!m || m.role !== "assistant" || !m.usage) continue;
     const u = m.usage;
-    const input =
-      (u.input_tokens || 0) +
-      (u.cache_creation_input_tokens || 0) +
-      (u.cache_read_input_tokens || 0);
+    const cacheRead = u.cache_read_input_tokens || 0;
+    const cacheCreation = u.cache_creation_input_tokens || 0;
+    const input = (u.input_tokens || 0) + cacheCreation + cacheRead;
     const output = u.output_tokens || 0;
     const id = m.id || `${m.model}:${input}:${output}`;
     const prev = byId.get(id);
     if (!prev || output >= prev.output) {
-      byId.set(id, { model: m.model || "unknown", input, output });
+      byId.set(id, {
+        model: m.model || "unknown",
+        input,
+        output,
+        cacheRead,
+        cacheCreation,
+      });
     }
   }
 
@@ -122,10 +139,14 @@ export function transcriptToUsage(transcriptText: string): BufferLine[] {
       model: r.model,
       inputTokens: 0,
       outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
       calls: 0,
     };
     agg.inputTokens = (agg.inputTokens ?? 0) + r.input;
     agg.outputTokens = (agg.outputTokens ?? 0) + r.output;
+    agg.cacheReadTokens = (agg.cacheReadTokens ?? 0) + r.cacheRead;
+    agg.cacheCreationTokens = (agg.cacheCreationTokens ?? 0) + r.cacheCreation;
     agg.calls = (agg.calls ?? 0) + 1;
     byModel.set(r.model, agg);
   }

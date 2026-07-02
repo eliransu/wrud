@@ -70,6 +70,10 @@ export const eventSchema = z.discriminatedUnion("type", [
       model: z.string(),
       inputTokens: z.number().optional(),
       outputTokens: z.number().optional(),
+      // Cache-billed SUBSETS of inputTokens (Anthropic-style usage); lets pricing bill them
+      // at cache rates instead of full input weight. Absent on agents without a cache split.
+      cacheReadTokens: z.number().optional(),
+      cacheCreationTokens: z.number().optional(),
       task: z.string().optional(),
       // Number of underlying assistant API calls this record aggregates (default 1). Lets one
       // model_use event represent a whole session's usage for a model instead of one-per-message.
@@ -126,6 +130,9 @@ export const summaryStatsSchema = z.object({
       calls: z.number().int(),
       inputTokens: z.number(),
       outputTokens: z.number(),
+      // Optional: summaries stored before the cache split existed don't have them.
+      cacheReadTokens: z.number().optional(),
+      cacheCreationTokens: z.number().optional(),
     }),
   ),
   errorCount: z.number().int(),
@@ -198,6 +205,8 @@ export const overviewSchema = z.object({
       calls: z.number().int(),
       inputTokens: z.number(),
       outputTokens: z.number(),
+      cacheReadTokens: z.number().optional(),
+      cacheCreationTokens: z.number().optional(),
     }),
   ),
   insights: z.object({

@@ -84,6 +84,8 @@ describe("DeterministicSummarizer", () => {
         calls: 1,
         inputTokens: 100,
         outputTokens: 50,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
       },
     ]);
     expect(s.stats.durationMs).toBe(30000); // first to last event timestamp

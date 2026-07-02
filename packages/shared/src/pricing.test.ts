@@ -38,6 +38,27 @@ describe("estimateCostUsd", () => {
     expect(usd).toBeCloseTo(5 + 2.5 + 0.5, 6);
   });
 
+  it("bills cache reads at 0.1x and cache creation at 1.25x the input rate", () => {
+    // 10M input of which 9M cache reads + 500k cache creation -> only 500k at full weight.
+    const usd = estimateCostUsd([
+      {
+        model: "claude-opus-4-8",
+        inputTokens: 10_000_000,
+        outputTokens: 0,
+        cacheReadTokens: 9_000_000,
+        cacheCreationTokens: 500_000,
+      },
+    ]);
+    // (500k*1 + 9M*0.1 + 500k*1.25) / 1M * $5 = 2.025 * 5
+    expect(usd).toBeCloseTo(2.025 * 5, 6);
+    // Without the split, the same tokens price at full weight (the old upper bound).
+    expect(
+      estimateCostUsd([
+        { model: "claude-opus-4-8", inputTokens: 10_000_000, outputTokens: 0 },
+      ]),
+    ).toBeCloseTo(50, 6);
+  });
+
   it("refuses partial estimates when a used model is unknown", () => {
     expect(
       estimateCostUsd([
