@@ -338,6 +338,8 @@ export default function SessionDetail() {
           size="small"
           // newest events first (LIFO) - the server pages & sorts (order=desc)
           dataSource={events?.items ?? []}
+          // wider than the card? scroll inside it instead of bleeding past the border
+          scroll={{ x: "max-content" }}
           pagination={{
             current: page,
             pageSize,
