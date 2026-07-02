@@ -52,7 +52,7 @@ export default function Keys() {
           rowKey="id"
           loading={loading}
           dataSource={data ?? []}
-          pagination={{ pageSize: 12, hideOnSinglePage: true }}
+          pagination={{ defaultPageSize: 12, hideOnSinglePage: true }}
           locale={{ emptyText: "No keys" }}
           columns={[
             { title: "Name", dataIndex: "name" },

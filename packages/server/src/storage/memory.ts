@@ -112,7 +112,7 @@ export class MemoryStorageAdapter implements StorageAdapter {
             ? 1
             : -1,
       );
-    let start = 0;
+    let start = f.offset ?? 0;
     if (f.cursor) {
       const sep = f.cursor.indexOf("__");
       const ts = f.cursor.slice(0, sep);
@@ -127,7 +127,7 @@ export class MemoryStorageAdapter implements StorageAdapter {
     const last = slice[slice.length - 1];
     const hasMore = start + limit < all.length;
     const nextCursor = hasMore && last ? `${last.createdAt}__${last.id}` : null;
-    return { items: slice.map(clone), nextCursor };
+    return { items: slice.map(clone), nextCursor, total: all.length };
   }
 
   async listFacets(
@@ -235,16 +235,16 @@ export class MemoryStorageAdapter implements StorageAdapter {
 
   async getEvents(sessionId: string, page?: Page): Promise<Paginated<Event>> {
     const all = [...(this.events.get(sessionId)?.values() ?? [])].sort(
-      (a, b) => a.seq - b.seq,
+      (a, b) => (page?.order === "desc" ? b.seq - a.seq : a.seq - b.seq),
     );
     const limit = page?.limit ?? 500;
     const start = page?.cursor
       ? all.findIndex((e) => e.id === page.cursor) + 1
-      : 0;
+      : (page?.offset ?? 0);
     const slice = all.slice(start, start + limit);
     const nextCursor =
       start + limit < all.length ? slice[slice.length - 1]!.id : null;
-    return { items: slice.map(clone), nextCursor };
+    return { items: slice.map(clone), nextCursor, total: all.length };
   }
 
   async saveSummary(s: SessionSummary) {

@@ -23,7 +23,7 @@ const splitCsv = (v?: string): string[] =>
     .map((s) => s.trim())
     .filter(Boolean);
 
-const nonNegInt = (v?: string): number | undefined => {
+export const nonNegInt = (v?: string): number | undefined => {
   if (v == null || v === "") return undefined;
   const n = Number(v);
   return Number.isFinite(n) && n >= 0 ? Math.floor(n) : undefined;
@@ -55,5 +55,6 @@ export function parseSessionFilter(
     hasError: q.hasError === "true" || q.hasError === "1" ? true : undefined,
     limit: clampLimit(q.limit, maxLimit),
     cursor: q.cursor || null,
+    offset: nonNegInt(q.offset),
   };
 }

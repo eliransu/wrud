@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { Table, Button, Tooltip, message } from "antd";
+import { Table, Tooltip, message } from "antd";
 import { useNavigate } from "react-router-dom";
 import { formatApproxUsd } from "@wrud/shared/pricing";
 import { api } from "../api";
@@ -28,53 +28,36 @@ const chip: CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-const PAGE = 25;
-
 export default function Sessions() {
   const [filters, setFilters] = useState<FilterState>({});
   const [items, setItems] = useState<any[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [more, setMore] = useState(false);
   const nav = useNavigate();
 
-  const params = (extra: Record<string, string> = {}) => ({
-    limit: String(PAGE),
-    ...filterToParams(filters),
-    ...extra,
-  });
-
-  // (re)load page 1 whenever filters change
+  // server-side pages: (re)load whenever filters or the page window change
   useEffect(() => {
     let alive = true;
     setLoading(true);
     api
-      .listSessions(params())
+      .listSessions({
+        limit: String(pageSize),
+        offset: String((page - 1) * pageSize),
+        ...filterToParams(filters),
+      })
       .then((d) => {
         if (!alive) return;
         setItems(d.items ?? []);
-        setCursor(d.nextCursor ?? null);
+        setTotal(d.total ?? 0);
       })
       .catch((e) => message.error(e instanceof Error ? e.message : String(e)))
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters]);
-
-  const loadMore = () => {
-    if (!cursor) return;
-    setMore(true);
-    api
-      .listSessions(params({ cursor }))
-      .then((d) => {
-        setItems((prev) => [...prev, ...(d.items ?? [])]);
-        setCursor(d.nextCursor ?? null);
-      })
-      .catch((e) => message.error(e instanceof Error ? e.message : String(e)))
-      .finally(() => setMore(false));
-  };
+  }, [filters, page, pageSize]);
 
   return (
     <>
@@ -83,7 +66,10 @@ export default function Sessions() {
       {/* Sessions = focused browse filters; the full dimension set lives on Reports. */}
       <FacetFilterBar
         value={filters}
-        onChange={setFilters}
+        onChange={(f) => {
+          setFilters(f);
+          setPage(1); // new filter -> back to page 1
+        }}
         dims={["user", "agent", "project", "model", "status"]}
         showTokens={false}
         showError={false}
@@ -94,7 +80,17 @@ export default function Sessions() {
           rowKey="id"
           loading={loading}
           dataSource={items}
-          pagination={false}
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            pageSizeOptions: [10, 25, 50, 100],
+            onChange: (p, ps) => {
+              setPage(ps !== pageSize ? 1 : p); // new page size -> back to page 1
+              setPageSize(ps);
+            },
+          }}
           // wider than the card? scroll inside it instead of bleeding past the border
           scroll={{ x: "max-content" }}
           locale={{ emptyText: "No sessions match" }}
@@ -110,7 +106,7 @@ export default function Sessions() {
               width: 56,
               render: (_: unknown, __: unknown, i: number) => (
                 <span className="wd-mono" style={{ color: "var(--signal)" }}>
-                  {i + 1}
+                  {(page - 1) * pageSize + i + 1}
                 </span>
               ),
             },
@@ -254,13 +250,6 @@ export default function Sessions() {
             },
           ]}
         />
-        {cursor && (
-          <div style={{ textAlign: "center", marginTop: 16 }}>
-            <Button onClick={loadMore} loading={more}>
-              Load more
-            </Button>
-          </div>
-        )}
       </Surface>
     </>
   );

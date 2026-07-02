@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Spin, Table, Empty, Tag } from "antd";
 import { WarningOutlined } from "@ant-design/icons";
@@ -121,8 +122,25 @@ function EventDetail({ event }: { event: any }) {
 
 export default function SessionDetail() {
   const { id = "" } = useParams();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
   const { data, loading } = useApi(() => api.getSession(id), [id]);
-  const { data: events } = useApi(() => api.listEvents(id), [id]);
+  // Event log pages server-side, newest first.
+  const { data: events } = useApi(
+    () =>
+      api.listEvents(id, {
+        limit: String(pageSize),
+        offset: String((page - 1) * pageSize),
+        order: "desc",
+      }),
+    [id, page, pageSize],
+  );
+  // Skills scan needs the whole stream, not the visible page.
+  // ponytail: caps at the route max (1000 events); move extraction server-side if sessions outgrow it.
+  const { data: skillEvents } = useApi(
+    () => api.listEvents(id, { limit: "1000" }),
+    [id],
+  );
   if (loading || !data)
     return <Spin style={{ display: "block", marginTop: 80 }} />;
 
@@ -164,7 +182,7 @@ export default function SessionDetail() {
       </Surface>
 
       {(() => {
-        const { skills, extensions } = extractSkills(events?.items);
+        const { skills, extensions } = extractSkills(skillEvents?.items);
         if (skills.length === 0 && extensions.length === 0) return null;
         const chip = (label: string, color: string) => (
           <span
@@ -318,11 +336,20 @@ export default function SessionDetail() {
         <Table
           rowKey="id"
           size="small"
-          // newest events first (LIFO)
-          dataSource={[...(events?.items ?? [])].sort(
-            (a: any, b: any) => b.seq - a.seq,
-          )}
-          pagination={{ pageSize: 15, hideOnSinglePage: true }}
+          // newest events first (LIFO) - the server pages & sorts (order=desc)
+          dataSource={events?.items ?? []}
+          pagination={{
+            current: page,
+            pageSize,
+            total: events?.total ?? 0,
+            hideOnSinglePage: true,
+            showSizeChanger: true,
+            pageSizeOptions: [10, 15, 25, 50, 100],
+            onChange: (p, ps) => {
+              setPage(ps !== pageSize ? 1 : p); // new page size -> back to page 1
+              setPageSize(ps);
+            },
+          }}
           locale={{ emptyText: "No events" }}
           expandable={{
             expandedRowRender: (e: any) => <EventDetail event={e} />,

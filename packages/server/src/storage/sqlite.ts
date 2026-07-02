@@ -242,6 +242,13 @@ export class SqliteStorageAdapter implements StorageAdapter {
   async listSessions(f: SessionFilter): Promise<Paginated<Session>> {
     const { clauses, params } = this.buildFilterClauses(f);
     const limit = f.limit ?? 50;
+    // Total over the filter (pre-cursor/offset) - powers numbered pagination.
+    const totalWhere = clauses.length ? "WHERE " + clauses.join(" AND ") : "";
+    const total = (
+      this.db
+        .prepare(`SELECT COUNT(*) n FROM sessions ${totalWhere}`)
+        .get(params) as any
+    ).n as number;
     // Keyset pagination on (created_at, id) DESC - the cursor is the last row's
     // `${createdAt}__${id}`. Indexed by idx_sessions_created; no JS slicing of the full set.
     if (f.cursor) {
@@ -256,16 +263,19 @@ export class SqliteStorageAdapter implements StorageAdapter {
     const rows = (
       this.db
         .prepare(
-          `SELECT * FROM sessions ${whereSql} ORDER BY created_at DESC, id DESC LIMIT @lim`,
+          `SELECT * FROM sessions ${whereSql} ORDER BY created_at DESC, id DESC LIMIT @lim OFFSET @off`,
         )
-        .all({ ...params, lim: limit + 1 }) as any[]
-    ) // fetch one extra to detect "more"
-      .map(this.rowToSession);
+        .all({
+          ...params,
+          lim: limit + 1, // fetch one extra to detect "more"
+          off: f.cursor ? 0 : (f.offset ?? 0),
+        }) as any[]
+    ).map(this.rowToSession);
     const hasMore = rows.length > limit;
     const items = rows.slice(0, limit);
     const last = items[items.length - 1];
     const nextCursor = hasMore && last ? `${last.createdAt}__${last.id}` : null;
-    return { items, nextCursor };
+    return { items, nextCursor, total };
   }
 
   async sessionStats(ids: string[]): Promise<Record<string, SessionStats>> {
@@ -423,25 +433,49 @@ export class SqliteStorageAdapter implements StorageAdapter {
   }
 
   async getEvents(sessionId: string, page?: Page): Promise<Paginated<Event>> {
-    const rows = this.db
-      .prepare(`SELECT * FROM events WHERE session_id = ? ORDER BY seq ASC`)
-      .all(sessionId) as any[];
-    const items = rows.map((r) => ({
-      id: r.id,
-      sessionId: r.session_id,
-      seq: r.seq,
-      timestamp: r.timestamp,
-      type: r.type,
-      payload: JSON.parse(r.payload_json),
-    })) as Event[];
     const limit = page?.limit ?? 500;
-    const start = page?.cursor
-      ? items.findIndex((e) => e.id === page.cursor) + 1
-      : 0;
-    const slice = items.slice(start, start + limit);
+    const desc = page?.order === "desc";
+    const total = (
+      this.db
+        .prepare(`SELECT COUNT(*) n FROM events WHERE session_id = ?`)
+        .get(sessionId) as any
+    ).n as number;
+    const params: Record<string, unknown> = {
+      sid: sessionId,
+      lim: limit + 1, // fetch one extra to detect "more"
+      off: page?.cursor ? 0 : (page?.offset ?? 0),
+    };
+    let where = "session_id = @sid";
+    if (page?.cursor) {
+      // Keyset: the cursor is the last event id; continue past its seq.
+      const cur = this.db
+        .prepare(`SELECT seq FROM events WHERE session_id = ? AND id = ?`)
+        .get(sessionId, page.cursor) as any;
+      if (cur) {
+        where += desc ? " AND seq < @curSeq" : " AND seq > @curSeq";
+        params.curSeq = cur.seq;
+      }
+    }
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM events WHERE ${where} ORDER BY seq ${desc ? "DESC" : "ASC"} LIMIT @lim OFFSET @off`,
+      )
+      .all(params) as any[];
+    const hasMore = rows.length > limit;
+    const items = rows.slice(0, limit).map(
+      (r) =>
+        ({
+          id: r.id,
+          sessionId: r.session_id,
+          seq: r.seq,
+          timestamp: r.timestamp,
+          type: r.type,
+          payload: JSON.parse(r.payload_json),
+        }) as Event,
+    );
     const nextCursor =
-      start + limit < items.length ? slice[slice.length - 1]!.id : null;
-    return { items: slice, nextCursor };
+      hasMore && items.length ? items[items.length - 1]!.id : null;
+    return { items, nextCursor, total };
   }
 
   async saveSummary(s: SessionSummary) {

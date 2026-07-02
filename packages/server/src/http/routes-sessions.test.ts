@@ -117,6 +117,50 @@ describe("session routes", () => {
     expect(res.status).toBe(404);
   });
 
+  it("numbered pagination: offset/total on sessions, offset/order/total on events", async () => {
+    // three sessions (distinct createdAt via the clock? no - same clock, ordered by id DESC)
+    const ids: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const r = await app.request("/v1/sessions", {
+        method: "POST",
+        headers: h,
+        body: JSON.stringify({
+          user: { id: "u1" },
+          agent: { name: "claude-code" },
+        }),
+      });
+      ids.push(((await r.json()) as any).sessionId);
+    }
+    const list = (await (
+      await app.request("/v1/sessions?limit=2&offset=2", { headers: h })
+    ).json()) as any;
+    expect(list.total).toBe(3);
+    expect(list.items).toHaveLength(1);
+
+    const sid = ids[0]!;
+    const ev = (seq: number) => ({
+      id: `e${seq}`,
+      sessionId: sid,
+      seq,
+      timestamp: `2026-06-25T10:00:0${seq}.000Z`,
+      type: "tool_call",
+      payload: { name: "Read", ok: true },
+    });
+    await app.request(`/v1/sessions/${sid}/events`, {
+      method: "POST",
+      headers: h,
+      body: JSON.stringify({ events: [0, 1, 2, 3, 4].map(ev) }),
+    });
+    const page = (await (
+      await app.request(
+        `/v1/sessions/${sid}/events?limit=2&offset=2&order=desc`,
+        { headers: h },
+      )
+    ).json()) as any;
+    expect(page.total).toBe(5);
+    expect(page.items.map((e: any) => e.seq)).toEqual([2, 1]);
+  });
+
   it("client mode: summarize parks the session in 'summarizing', PUT /summary finalizes it", async () => {
     const created = await app.request("/v1/sessions", {
       method: "POST",

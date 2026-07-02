@@ -24,7 +24,7 @@ import type { AppEnv } from "../app.js";
 import { requireScope } from "./auth-middleware.js";
 import { AppError, zodIssues } from "./errors.js";
 import { lessonsFromInsights } from "../analytics/lessons.js";
-import { parseSessionFilter, clampLimit } from "./filter.js";
+import { parseSessionFilter, clampLimit, nonNegInt } from "./filter.js";
 
 export const sessionRoutes = new Hono<AppEnv>();
 
@@ -195,7 +195,7 @@ sessionRoutes.get("/sessions", requireScope("read"), async (c) => {
       category: summary?.category ?? null,
     };
   });
-  return c.json({ items, nextCursor: page.nextCursor }, 200);
+  return c.json({ items, nextCursor: page.nextCursor, total: page.total }, 200);
 });
 
 sessionRoutes.get("/sessions/:id", requireScope("read"), async (c) => {
@@ -215,6 +215,8 @@ sessionRoutes.get("/sessions/:id/events", requireScope("read"), async (c) => {
   const page = await storage.getEvents(id, {
     limit: clampLimit(q.limit, 1000),
     cursor: q.cursor ?? null,
+    offset: nonNegInt(q.offset),
+    order: q.order === "desc" ? "desc" : "asc",
   });
   return c.json(page, 200);
 });

@@ -21,10 +21,16 @@ import type {
 export interface Page {
   limit?: number;
   cursor?: string | null;
+  /** Numbered-page access: row offset into the ordered set. Ignored when `cursor` is set. */
+  offset?: number;
+  /** Sort direction over the natural order (seq for events). Default asc. */
+  order?: "asc" | "desc";
 }
 export interface Paginated<T> {
   items: T[];
   nextCursor: string | null;
+  /** Total rows matching the query (across all pages) - powers numbered pagination. */
+  total?: number;
 }
 
 export interface SessionFilter {
@@ -44,6 +50,8 @@ export interface SessionFilter {
   hasError?: boolean;
   limit?: number;
   cursor?: string | null;
+  /** Numbered-page access: row offset into the ordered set. Ignored when `cursor` is set. */
+  offset?: number;
 }
 
 /** A distinct facet value and how many sessions carry it - powers search-and-select UIs. */

@@ -68,6 +68,26 @@ describe("MemoryStorageAdapter", () => {
     expect(page.items.map((s) => s.id)).toEqual(["s2", "s1"]);
   });
 
+  it("offset-paginates sessions and events with a filter-wide total", async () => {
+    for (let i = 0; i < 5; i++)
+      await store.createSession({
+        ...session(`s${i}`),
+        createdAt: `2026-06-25T10:0${i}:00.000Z`,
+      });
+    const p = await store.listSessions({ limit: 2, offset: 2 });
+    expect(p.items.map((s) => s.id)).toEqual(["s2", "s1"]);
+    expect(p.total).toBe(5);
+
+    await store.appendEvents("s0", [0, 1, 2, 3, 4].map(ev));
+    const desc = await store.getEvents("s0", {
+      limit: 2,
+      offset: 2,
+      order: "desc",
+    });
+    expect(desc.items.map((e) => e.seq)).toEqual([2, 1]);
+    expect(desc.total).toBe(5);
+  });
+
   it("stores and reads a summary", async () => {
     const summary = {
       sessionId: "s1",

@@ -214,6 +214,40 @@ describe("SqliteStorageAdapter facets/filters/reports", () => {
     expect(p3.nextCursor).toBeNull();
   });
 
+  it("offset-paginates sessions and events with a filter-wide total", async () => {
+    for (let i = 0; i < 5; i++)
+      await store.createSession(
+        mk(`s${i}`, { createdAt: `2026-06-25T10:0${i}:00.000Z` }),
+      );
+    const p = await store.listSessions({ limit: 2, offset: 2 });
+    expect(p.items.map((s) => s.id)).toEqual(["s2", "s1"]);
+    expect(p.total).toBe(5);
+
+    await store.appendEvents(
+      "s0",
+      [0, 1, 2, 3, 4].map((seq) =>
+        evt(seq, "tool_call", { name: "Read", ok: true }),
+      ),
+    );
+    const asc = await store.getEvents("s0", { limit: 2, offset: 2 });
+    expect(asc.items.map((e) => e.seq)).toEqual([2, 3]);
+    expect(asc.total).toBe(5);
+    const desc = await store.getEvents("s0", {
+      limit: 2,
+      offset: 2,
+      order: "desc",
+    });
+    expect(desc.items.map((e) => e.seq)).toEqual([2, 1]);
+    // desc keyset cursor keeps walking backwards
+    const next = await store.getEvents("s0", {
+      limit: 2,
+      cursor: desc.nextCursor,
+      order: "desc",
+    });
+    expect(next.items.map((e) => e.seq)).toEqual([0]);
+    expect(next.nextCursor).toBeNull();
+  });
+
   it("sessionStats reads counters + model facets (no event scan)", async () => {
     await store.createSession(mk("s1"));
     await store.appendEvents("s1", [

@@ -246,7 +246,7 @@ export default function Reports() {
               rowKey="id"
               size="small"
               dataSource={list?.items ?? []}
-              pagination={{ pageSize: 10, hideOnSinglePage: true }}
+              pagination={{ defaultPageSize: 10, hideOnSinglePage: true }}
               locale={{ emptyText: "No sessions match" }}
               columns={[
                 {

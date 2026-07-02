@@ -67,7 +67,7 @@ export function buildOpenApiDoc() {
         get: {
           summary: "List sessions (scope: read)",
           description:
-            "Filterable + keyset-paginated. Each facet dim accepts a comma-separated list (OR within a dim, AND across dims): user, agent, model, tool, mcp, skill, command, file_ext, error_kind, status. Plus from/to (ISO, createdAt range), minInputTokens, minOutputTokens, hasError, limit, cursor.",
+            "Filterable + paginated (keyset via cursor, or numbered pages via offset). Each facet dim accepts a comma-separated list (OR within a dim, AND across dims): user, agent, model, tool, mcp, skill, command, file_ext, error_kind, status. Plus from/to (ISO, createdAt range), minInputTokens, minOutputTokens, hasError, limit, cursor, offset. `total` counts all rows matching the filter.",
           responses: {
             "200": {
               description: "paginated sessions",
@@ -78,6 +78,7 @@ export function buildOpenApiDoc() {
                     properties: {
                       items: { type: "array", items: toJson(sessionSchema) },
                       nextCursor: { type: ["string", "null"] },
+                      total: { type: "integer" },
                     },
                   },
                 },
@@ -99,6 +100,8 @@ export function buildOpenApiDoc() {
         },
         get: {
           summary: "List session events (scope: read)",
+          description:
+            "Paginated: limit, cursor (keyset) or offset (numbered pages), order=asc|desc (by seq, default asc). `total` counts all events in the session.",
           responses: {
             "200": {
               description: "paginated events",
@@ -109,6 +112,7 @@ export function buildOpenApiDoc() {
                     properties: {
                       items: { type: "array", items: toJson(eventSchema) },
                       nextCursor: { type: ["string", "null"] },
+                      total: { type: "integer" },
                     },
                   },
                 },

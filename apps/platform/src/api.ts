@@ -55,8 +55,14 @@ export const api = {
     });
   },
   getSession: (id: string) => req(`/v1/sessions/${id}`, { headers: headers() }),
-  listEvents: (id: string) =>
-    req(`/v1/sessions/${id}/events`, { headers: headers() }),
+  listEvents: (id: string, params: Record<string, string> = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v != null && v !== ""),
+    ).toString();
+    return req(`/v1/sessions/${id}/events${qs ? "?" + qs : ""}`, {
+      headers: headers(),
+    });
+  },
   listKeys: () => req("/v1/keys", { headers: headers() }),
   createKey: (name: string, scopes: string[]) =>
     req("/v1/keys", {
