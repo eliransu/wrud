@@ -103,8 +103,8 @@ export function Onboarding() {
         No sessions yet - let's wire up your agent.
       </h2>
       <p style={{ color: "var(--muted)", marginTop: 0, lineHeight: 1.6 }}>
-        The dashboard fills up as your coding agent works. wrud rides your
-        agent's own hooks - nothing to instrument by hand.
+        The dashboard fills up as your agents work. wrud rides your agent's own
+        hooks - nothing to instrument by hand.
       </p>
 
       <div style={{ display: "grid", gap: 22, marginTop: 26 }}>

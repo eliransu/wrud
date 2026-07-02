@@ -1,6 +1,6 @@
 # @wrud/cli
 
-**What R U Doing** — a local-first, open-source recorder for AI coding-agent sessions.
+**What R U Doing** — a local-first, open-source recorder for AI-agent sessions.
 
 Your agent runs for an hour, changes dozens of files, spends real money, picks its own model — then the session scrolls off and is gone. `wrud` records every session (tools, models, tokens, cost, file edits, prompts), writes a plain-language recap, and turns recurring mistakes into lessons you feed back. Runs entirely on your machine — no cloud, no account, nothing leaves your box.
 

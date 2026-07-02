@@ -7,7 +7,7 @@
 
 # wrud
 
-**What R U Doing** - a local-first, open-source recorder for AI agent sessions.
+**What R U Doing** - a local-first, open-source recorder for AI-agent sessions.
 
 [![npm](https://img.shields.io/npm/v/@wrud/cli.svg)](https://www.npmjs.com/package/@wrud/cli)
 [![license: MIT](https://img.shields.io/badge/license-MIT-b6f24e.svg)](LICENSE)
@@ -19,8 +19,9 @@
 
 ---
 
-Your agent runs for an hour, changes dozens of files, picks its own model, makes the same
-mistake it made last Tuesday - then the session scrolls off and is gone. wrud records it.
+Your agent runs for an hour - coding, researching, drafting - changes dozens of files, picks
+its own model, makes the same mistake it made last Tuesday - then the session scrolls off and
+is gone. wrud records it.
 
 Every session is captured via the agent's own lifecycle hooks and written to a local SQLite
 file: tools called, prompts submitted, file edits made, models used, tokens consumed per model,
@@ -29,7 +30,7 @@ writes a plain-language recap. Recurring patterns across sessions become **lesso
 feed back as agent memory.
 
 It also flags where a **frontier model did trivial work** a smaller one could have done - so you
-can right-size your model choices instead of paying top-tier rates to rename a variable.
+can right-size your model choices instead of paying top-tier rates to fix a typo.
 
 **No cloud account. No telemetry. Nothing leaves your machine** - just `npx @wrud/cli`.
 
@@ -104,6 +105,9 @@ Source diagram: [`docs/architecture.mmd`](docs/architecture.mmd)
 | Claude Code | `~/.claude/settings.json` hooks | Full (per model)                         | [`providers/claude-code.md`](providers/claude-code.md) |
 | Cursor 1.7+ | `~/.cursor/hooks.json`          | Model name only (token numbers deferred) | [`providers/cursor.md`](providers/cursor.md)           |
 
+The hooks fire whatever the work is - the same capture whether your agent is shipping code,
+drafting campaign copy, or cleaning a spreadsheet. Recording is about the agent, not the task.
+
 Adding another agent is a single entry in the provider registry
 (`packages/cli/src/providers.ts`) - config path, event map, payload normalization - plus a
 `providers/<id>.md` doc. No changes to the API, SDK, or dashboard.
@@ -166,9 +170,11 @@ Open `http://localhost:11190` and paste your token on the Connect screen.
 | Lessons        | Memory-teaching guidance derived from recurring patterns across sessions.                                             |
 | API Keys       | Create keys (secret shown once), list, revoke. Scopes: `ingest`, `read`, `admin`.                                     |
 
-**On tokens and cost signals:** wrud surfaces token counts per model and flags sessions where a
-high-tier model was used for a trivial task - useful for right-sizing your model choices. It
-does not compute or display dollar amounts.
+**On tokens and cost signals:** wrud surfaces token counts per model, an approximate dollar
+cost (`~$`) from a built-in list-price table, and flags sessions where a high-tier model was
+used for a trivial task - useful for right-sizing your model choices. The `~$` figure is an
+estimate: list prices only, cache discounts not modeled (cache-heavy sessions read as an upper
+bound), and unknown models show no cost rather than a wrong one.
 
 ---
 

@@ -178,7 +178,7 @@ export function buildBaseSummary(
 
 /* ---------- the shared narration prompt (identical on server + client) ---------- */
 export const SUMMARY_SYSTEM_PROMPT =
-  "You are wrud, a session recorder for AI coding agents. You are given the actual conversation " +
+  "You are wrud, a session recorder for AI agents. You are given the actual conversation " +
   "of one session - the user's prompts, the agent's replies, and the tools it ran - plus summary " +
   "stats for context. Write a neutral, concrete 2-4 sentence summary of WHAT THE USER WANTED and " +
   "WHAT THE AGENT ACTUALLY DID AND ACCOMPLISHED. Summarize the substance of the work, not the " +
