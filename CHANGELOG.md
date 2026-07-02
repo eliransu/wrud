@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.4] - 2026-07-02
+
+### Fixed
+
+- **Honest cost estimates** - cache tokens are no longer billed at the full input rate.
+  The transcript parser keeps `cacheReadTokens`/`cacheCreationTokens` as subsets of
+  `inputTokens`, and pricing bills reads at 0.1x and creation at 1.25x the input rate
+  (Anthropic 5-min-TTL rates). For cache-heavy agents like Claude Code this drops the
+  `~$` figure to roughly a tenth of the old upper bound. Sessions recorded before this
+  release lack the split and keep the old full-weight estimate. The Overview tile and
+  the model-rightsizing insight use the same cache-aware weighting.
+
+---
+
 ## [0.7.3] - 2026-07-02
 
 ### Fixed
