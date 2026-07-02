@@ -119,10 +119,15 @@ export default function Overview() {
         />
         {estCost != null && (
           // useCountUp animates integers - feed cents, format back to ~$.
+          // Large totals compact ("~$2.8K") like the token tiles, else they overflow the tile.
           <StatTile
             label="~$ cost (est.)"
             value={Math.round(estCost * 100)}
-            format={(n) => formatApproxUsd(n / 100)}
+            format={(n) =>
+              n / 100 >= 1000
+                ? "~$" + compact(n / 100)
+                : formatApproxUsd(n / 100)
+            }
             delay={150}
           />
         )}

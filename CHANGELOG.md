@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.1] - 2026-07-02
+
+### Fixed
+
+- **Overview `~$ cost (est.)` tile no longer overflows** - totals ≥ $1,000 render compact
+  ("~$2.8K") like the token tiles instead of spilling out of the six-column stat grid.
+
+---
+
 ## [0.7.0] - 2026-07-02
 
 ### Added
