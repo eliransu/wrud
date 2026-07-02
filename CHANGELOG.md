@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.7.1] - 2026-07-02
+## [0.7.2] - 2026-07-02
 
 ### Changed
 
@@ -19,6 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   whole row still opens the session), the interim Context/Summary column is gone, hovering
   a `summarized` status pill shows the full recap as a native popover, and the `~$` column
   is titled `Cost`.
+
+---
+
+## [0.7.1] - 2026-07-02
+
+### Changed
+
+- **Interim Summary column on Sessions** (superseded in 0.7.2 by the recap popover on the
+  status pill) - cell showed the topic/recap, native hover showed the full summarized
+  content.
 - **Category filter removed from the Sessions page** (still available on Reports, where
   the full dimension set lives).
 
