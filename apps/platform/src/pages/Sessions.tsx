@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { Table, Button, message } from "antd";
+import { Table, Button, Tooltip, message } from "antd";
 import { useNavigate } from "react-router-dom";
 import { formatApproxUsd } from "@wrud/shared/pricing";
 import { api } from "../api";
@@ -224,12 +224,18 @@ export default function Sessions() {
             {
               title: "Status",
               dataIndex: "status",
-              render: (s: string, r: any) => (
-                // native-title popover: hovering a "summarized" pill shows the full recap
-                <span title={r.narrative ?? undefined}>
+              render: (s: string, r: any) =>
+                // hovering a "summarized" pill shows the full recap. Real tooltip, not a
+                // native title - the browser one has a ~1s delay and doesn't wrap.
+                r.narrative ? (
+                  <Tooltip title={r.narrative} placement="left">
+                    <span style={{ cursor: "help" }}>
+                      <Pill tone={STATUS_TONE[s] ?? "muted"}>{s}</Pill>
+                    </span>
+                  </Tooltip>
+                ) : (
                   <Pill tone={STATUS_TONE[s] ?? "muted"}>{s}</Pill>
-                </span>
-              ),
+                ),
             },
             {
               title: "Started",

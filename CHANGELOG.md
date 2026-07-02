@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.3] - 2026-07-02
+
+### Fixed
+
+- **The recap popover on the `summarized` pill actually shows now** - it's a real tooltip
+  (instant, wrapped, left of the pill) instead of a native `title`, which had a ~1s hover
+  delay and unwrapped text that made it look absent.
+
+---
+
 ## [0.7.2] - 2026-07-02
 
 ### Changed
