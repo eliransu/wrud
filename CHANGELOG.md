@@ -15,10 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Sessions "Context" column is now "Summary"** - the cell shows the topic (or recap) and
-  the native-hover popover shows the full summarized recap, falling back to the first
-  prompt for sessions not yet summarized. Existing summaries populate immediately (the
-  recap already exists); no category prefix in the cell.
+- **Sessions table simplified** - the session-id column is a plain incremental `#` (the
+  whole row still opens the session), the interim Context/Summary column is gone, hovering
+  a `summarized` status pill shows the full recap as a native popover, and the `~$` column
+  is titled `Cost`.
 - **Category filter removed from the Sessions page** (still available on Reports, where
   the full dimension set lives).
 

@@ -105,11 +105,12 @@ export default function Sessions() {
           })}
           columns={[
             {
-              title: "Session",
-              dataIndex: "id",
-              render: (id: string) => (
+              title: "#",
+              key: "n",
+              width: 56,
+              render: (_: unknown, __: unknown, i: number) => (
                 <span className="wd-mono" style={{ color: "var(--signal)" }}>
-                  {id.slice(0, 8)}...
+                  {i + 1}
                 </span>
               ),
             },
@@ -130,35 +131,6 @@ export default function Sessions() {
                   {a}
                 </span>
               ),
-            },
-            {
-              title: "Summary",
-              key: "summary",
-              render: (_: unknown, r: any) => {
-                // Cell = topic label (or the recap itself); native-title popover = the
-                // full summarized content (falls back to the first prompt pre-summary).
-                const full = r.narrative ?? r.context;
-                const label = r.topic ?? full;
-                if (!label)
-                  return <span style={{ color: "var(--muted)" }}>-</span>;
-                return (
-                  <span
-                    className="wd-mono"
-                    title={full ?? undefined}
-                    style={{
-                      fontSize: 12,
-                      display: "inline-block",
-                      maxWidth: 260,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      verticalAlign: "middle",
-                    }}
-                  >
-                    {label}
-                  </span>
-                );
-              },
             },
             {
               title: "Model(s)",
@@ -234,7 +206,7 @@ export default function Sessions() {
               },
             },
             {
-              title: "~$",
+              title: "Cost",
               dataIndex: "estCostUsd",
               align: "right" as const,
               render: (v: number | null | undefined) => (
@@ -252,8 +224,11 @@ export default function Sessions() {
             {
               title: "Status",
               dataIndex: "status",
-              render: (s: string) => (
-                <Pill tone={STATUS_TONE[s] ?? "muted"}>{s}</Pill>
+              render: (s: string, r: any) => (
+                // native-title popover: hovering a "summarized" pill shows the full recap
+                <span title={r.narrative ?? undefined}>
+                  <Pill tone={STATUS_TONE[s] ?? "muted"}>{s}</Pill>
+                </span>
               ),
             },
             {

@@ -32,9 +32,10 @@ test("lists the seeded session and shows its model-rightsizing insight", async (
   await connect(page);
   await page.getByRole("menuitem", { name: "Sessions" }).click();
   await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible();
-  // Rows are clickable (no per-cell link since 2ad810f) - click the first data row.
+  // Rows are clickable (no per-cell link since 2ad810f) - click the first data row
+  // (data rows carry the agent name; the header row doesn't).
   await page
-    .getByRole("row", { name: /\.\.\./ })
+    .getByRole("row", { name: /claude-code/ })
     .first()
     .click();
   await expect(
