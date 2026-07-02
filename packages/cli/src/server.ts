@@ -16,11 +16,12 @@ import {
   defaultAnalyzers,
 } from "@wrud/server/local";
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, openSync, readFileSync, statSync } from "node:fs";
 import { dirname, extname, join, normalize } from "node:path";
 import {
   ADMIN_TOKEN_FILE,
   DB,
+  HOME,
   PORT,
   ensureHome,
   ensureToken,
@@ -34,6 +35,44 @@ const keyedUrl = (port: number, token: string) =>
   `http://localhost:${port}/?key=${encodeURIComponent(token)}`;
 
 const skipHooks = () => process.argv.includes("--no-install-hooks");
+const detachFlag = () =>
+  process.argv.includes("-d") || process.argv.includes("--detach");
+
+/** `wrud -d` - re-spawn ourselves detached (docker compose -d style), wait for /health,
+ * print the URL + token, exit. Logs go to ~/.wrud/server.log; stop with `wrud stop`. */
+async function startDetached(cliPath: string): Promise<void> {
+  const logPath = join(HOME, "server.log");
+  const log = openSync(logPath, "a");
+  const args = process.argv
+    .slice(2)
+    .filter((a) => a !== "-d" && a !== "--detach");
+  spawn(process.execPath, [cliPath, ...args], {
+    detached: true,
+    stdio: ["ignore", log, log],
+    env: { ...process.env, WRUD_DETACHED: "1" }, // child: skip the browser pop
+  }).unref();
+  // ponytail: polls WRUD_PORT only - if the child had to step ports, check server.log.
+  for (let i = 0; i < 40; i++) {
+    if ((await http("GET", "/health")).ok) {
+      const token = await ensureToken(ADMIN_TOKEN_FILE, "wrud-cli-admin", [
+        "admin",
+        "read",
+        "ingest",
+      ]);
+      console.log(
+        [
+          `wrud is running in the background - ${keyedUrl(PORT, token)}`,
+          `  logs : ${logPath}`,
+          `  stop : wrud stop`,
+        ].join("\n"),
+      );
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  console.error(`wrud did not come up within 10s - check ${logPath}`);
+  process.exit(1);
+}
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -53,6 +92,7 @@ const MIME: Record<string, string> = {
 };
 
 function openBrowser(url: string): void {
+  if (process.env.WRUD_DETACHED) return; // background mode - don't pop a browser
   try {
     if (process.platform === "darwin")
       spawn("open", [url], { stdio: "ignore", detached: true }).unref();
@@ -112,6 +152,8 @@ export async function runServer(cliPath: string): Promise<void> {
     if (!skipHooks()) await autoInstallHooks(cliPath);
     return;
   }
+
+  if (detachFlag()) return startDetached(cliPath);
 
   const token = await ensureToken(ADMIN_TOKEN_FILE, "wrud-cli-admin", [
     "admin",
