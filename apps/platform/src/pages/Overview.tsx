@@ -51,6 +51,9 @@ export default function Overview() {
   const { data: sessions } = useApi(() => api.listSessions(), [], {
     pollMs: LIVE_POLL_MS,
   });
+  const { data: facetData } = useApi(() => api.facets(), [], {
+    pollMs: LIVE_POLL_MS,
+  });
 
   if (loading || !data)
     return <Spin style={{ display: "block", marginTop: 80 }} />;
@@ -382,6 +385,92 @@ export default function Overview() {
           )}
         </Surface>
       </div>
+
+      {/* Topics: what the org's agents are actually working on (facet-driven). */}
+      {(() => {
+        const cats = (facetData?.category ?? []) as {
+          value: string;
+          sessions: number;
+        }[];
+        const projects = (facetData?.project ?? []) as {
+          value: string;
+          sessions: number;
+        }[];
+        if (!cats.length && !projects.length) return null;
+        const bars = (rows: { value: string; sessions: number }[]) => {
+          const max = Math.max(1, ...rows.map((r) => r.sessions));
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {rows.slice(0, 8).map((r) => (
+                <div key={r.value}>
+                  <div
+                    className="wd-mono"
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: 12,
+                      color: "var(--ink)",
+                      marginBottom: 6,
+                    }}
+                  >
+                    <span>{r.value}</span>
+                    <span style={{ color: "var(--muted)" }}>{r.sessions}</span>
+                  </div>
+                  <span
+                    style={{
+                      display: "block",
+                      height: 8,
+                      borderRadius: 4,
+                      background: "rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: "block",
+                        height: "100%",
+                        borderRadius: 4,
+                        width: `${(r.sessions / max) * 100}%`,
+                        background: `linear-gradient(90deg, ${c.accentDim}, ${c.accent2})`,
+                      }}
+                    />
+                  </span>
+                </div>
+              ))}
+            </div>
+          );
+        };
+        return (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 16,
+              marginTop: 16,
+            }}
+          >
+            <Surface title="By category" delay={300}>
+              {cats.length === 0 ? (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="Categories appear once the narrator summarizes sessions"
+                />
+              ) : (
+                bars(cats)
+              )}
+            </Surface>
+            <Surface title="Top projects" delay={340}>
+              {projects.length === 0 ? (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="No projects yet"
+                />
+              ) : (
+                bars(projects)
+              )}
+            </Surface>
+          </div>
+        );
+      })()}
     </>
   );
 }

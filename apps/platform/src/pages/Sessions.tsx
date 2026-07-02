@@ -84,7 +84,7 @@ export default function Sessions() {
       <FacetFilterBar
         value={filters}
         onChange={setFilters}
-        dims={["user", "agent", "model", "status"]}
+        dims={["user", "agent", "project", "model", "category", "status"]}
         showTokens={false}
         showError={false}
       />
@@ -128,6 +128,38 @@ export default function Sessions() {
                   {a}
                 </span>
               ),
+            },
+            {
+              title: "Context",
+              key: "context",
+              render: (_: unknown, r: any) => {
+                const label = r.topic ?? r.context;
+                if (!label)
+                  return <span style={{ color: "var(--muted)" }}>-</span>;
+                // native title carries the full first prompt - no popover component
+                return (
+                  <span
+                    className="wd-mono"
+                    title={r.context ?? undefined}
+                    style={{
+                      fontSize: 12,
+                      display: "inline-block",
+                      maxWidth: 220,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      verticalAlign: "middle",
+                    }}
+                  >
+                    {r.category && (
+                      <span style={{ color: "var(--cyan)" }}>
+                        {r.category} ·{" "}
+                      </span>
+                    )}
+                    {label}
+                  </span>
+                );
+              },
             },
             {
               title: "Model(s)",

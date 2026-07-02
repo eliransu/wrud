@@ -77,7 +77,20 @@ export default function Lessons() {
     pollMs: LIVE_POLL_MS,
   });
   if (loading) return <Spin style={{ display: "block", marginTop: 80 }} />;
-  const items: any[] = data?.items ?? [];
+  const raw: any[] = data?.items ?? [];
+  // Dedup: the same insight recurring across sessions is ONE lesson observed N times - a
+  // wall of identical cards taught nothing. Group by scope+source, keep the newest text.
+  const groups = new Map<string, { l: any; count: number }>();
+  for (const l of raw) {
+    const k = `${l.scope}|${l.source}`;
+    const g = groups.get(k);
+    if (!g) groups.set(k, { l, count: 1 });
+    else {
+      g.count += 1;
+      if (l.createdAt > g.l.createdAt) g.l = l;
+    }
+  }
+  const items = [...groups.values()].sort((a, b) => b.count - a.count);
 
   return (
     <>
@@ -92,7 +105,7 @@ export default function Lessons() {
             gap: 16,
           }}
         >
-          {items.map((l, i) => {
+          {items.map(({ l, count }, i) => {
             const tone = SCOPE_TONE[l.scope] ?? "#8fa298";
             return (
               <div
@@ -123,6 +136,14 @@ export default function Lessons() {
                   >
                     {l.scope}
                   </span>
+                  {count > 1 && (
+                    <span
+                      className="wd-mono"
+                      style={{ fontSize: 11, color: "var(--amber)" }}
+                    >
+                      seen ×{count}
+                    </span>
+                  )}
                   <span
                     className="wd-mono"
                     style={{

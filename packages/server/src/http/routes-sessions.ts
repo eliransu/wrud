@@ -189,6 +189,9 @@ sessionRoutes.get("/sessions", requireScope("read"), async (c) => {
       tokens: { input: st.inputTokens, output: st.outputTokens },
       events: st.events,
       estCostUsd,
+      context: summary?.context ?? null,
+      topic: summary?.topic ?? null,
+      category: summary?.category ?? null,
     };
   });
   return c.json({ items, nextCursor: page.nextCursor }, 200);

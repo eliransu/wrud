@@ -15,16 +15,24 @@ export function lessonsFromInsights(
   const out: LessonDraft[] = [];
   for (const i of insights) {
     switch (i.type) {
-      case "model_rightsizing":
+      case "model_rightsizing": {
+        const est = i.evidence.estCostUsd;
+        const low = i.evidence.lowTierCostUsd;
+        const fmt = (n: number) => (n < 0.01 ? n.toFixed(4) : n.toFixed(2));
+        const dollars =
+          typeof est === "number" && typeof low === "number"
+            ? ` This run cost ~$${fmt(est)}; a low-tier model would have been ~$${fmt(low)}.`
+            : "";
         out.push({
           sessionId,
           scope: "user",
           guidance: `For small/trivial tasks, prefer a lighter, cheaper model. ${String(
             i.evidence.model ?? "a high-tier model",
-          )} was used for a change that produced little output.`,
+          )} was used for a change that produced little output.${dollars}`,
           source: "model_rightsizing",
         });
         break;
+      }
       case "high_error_rate":
         out.push({
           sessionId,

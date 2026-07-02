@@ -7,7 +7,7 @@
  * `import type` from "./index.js" stays type-only: index.js re-exports this module, so a
  * runtime import would be circular (same reason interfaces.ts does it).
  */
-import type { Session, Event } from "./index.js";
+import type { Session, Event, SessionSummary } from "./index.js";
 
 /**
  * The facet dimensions. Each is low-cardinality enough to enumerate ("search and select").
@@ -18,7 +18,10 @@ import type { Session, Event } from "./index.js";
 export const FACET_DIMS = [
   "user", // session.user.id
   "agent", // session.agent.name
+  "project", // basename of session.runtime.cwd (a fact, not a guess)
   "model", // model_use.model
+  "topic", // LLM-derived 2-5 word label (from the summary; absent without a narrator)
+  "category", // LLM-derived fixed-enum category (from the summary)
   "tool", // tool_call.name (excluding Skill + mcp__*)
   "mcp", // mcp__server__tool calls (extensions)
   "skill", // the Skill tool's input.skill
@@ -33,11 +36,23 @@ export interface Facet {
   value: string;
 }
 
-/** Facets fixed at session creation (who + which agent) - these never change. */
+/** Facets fixed at session creation (who + which agent + which project) - these never change. */
 export function sessionFacets(s: Session): Facet[] {
   const out: Facet[] = [];
   if (s.user?.id) out.push({ dim: "user", value: s.user.id });
   if (s.agent?.name) out.push({ dim: "agent", value: s.agent.name });
+  const project = (s.runtime?.cwd ?? "").split(/[\\/]/).filter(Boolean).pop();
+  if (project) out.push({ dim: "project", value: project });
+  return out;
+}
+
+/** Facets a summary contributes (topic/category from the narrator; empty without one). */
+export function summaryFacets(
+  s: Pick<SessionSummary, "topic" | "category">,
+): Facet[] {
+  const out: Facet[] = [];
+  if (s.topic) out.push({ dim: "topic", value: s.topic });
+  if (s.category) out.push({ dim: "category", value: s.category });
   return out;
 }
 

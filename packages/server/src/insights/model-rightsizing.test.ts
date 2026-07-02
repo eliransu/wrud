@@ -83,7 +83,7 @@ describe("ModelRightsizingAnalyzer", () => {
     );
     expect(out).toHaveLength(0);
   });
-  it("does not flag when the session had errors", () => {
+  it("STILL flags when the session had errors (v2: error gate removed - it suppressed every real session)", () => {
     const out = a.analyze(
       summary({
         models: [
@@ -95,6 +95,23 @@ describe("ModelRightsizingAnalyzer", () => {
           },
         ],
         errorCount: 2,
+      }),
+      [],
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]!.evidence.estCostUsd).toBeGreaterThan(0);
+  });
+  it("does not flag zero-output rows (model-name-only capture is not evidence)", () => {
+    const out = a.analyze(
+      summary({
+        models: [
+          {
+            model: "claude-opus-4-8",
+            calls: 1,
+            inputTokens: 0,
+            outputTokens: 0,
+          },
+        ],
       }),
       [],
     );

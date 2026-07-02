@@ -9,7 +9,10 @@ const { RangePicker } = DatePicker;
 export const DIMS = [
   ["user", "Users"],
   ["agent", "Agents"],
+  ["project", "Projects"],
   ["model", "Models"],
+  ["topic", "Topics"],
+  ["category", "Categories"],
   ["skill", "Skills"],
   ["command", "Commands"],
   ["tool", "Tools"],

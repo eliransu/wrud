@@ -5,6 +5,7 @@
  */
 import {
   buildBaseSummary,
+  parseNarratorOutput,
   type Summarizer,
   type InsightAnalyzer,
   type Clock,
@@ -38,20 +39,27 @@ export function buildSummarizer(opts: SummarizerOptions = {}): Summarizer {
         clock(),
         opts.analyzers ?? [],
       );
-      // Narrative comes ONLY from the LLM narrator; stays null (blank) when there's no narrator
-      // or it fails - no deterministic stats-sentence fallback.
+      // Narrative/topic/category come ONLY from the LLM narrator; they stay null when
+      // there's no narrator or it fails - no deterministic stats-sentence fallback.
       let narrative: string | null = base.narrative; // null from buildBaseSummary
+      let topic: string | null = null;
+      let category: string | null = null;
       if (opts.narrator) {
         try {
           const n = await opts.narrator({ session, summary: base, events });
-          if (n && n.trim()) narrative = n.trim();
+          const parsed = parseNarratorOutput(n);
+          if (parsed.narrative) narrative = parsed.narrative;
+          topic = parsed.topic;
+          category = parsed.category;
         } catch {
-          /* leave narrative null on narrator failure */
+          /* leave narrative/topic/category null on narrator failure */
         }
       }
       return {
         ...base,
         narrative,
+        topic,
+        category,
         summarizerVersion: version,
         summarizedBy: "server",
       };

@@ -136,6 +136,12 @@ export const sessionSummarySchema = z.object({
   sessionId: z.string(),
   stats: summaryStatsSchema,
   narrative: z.string().nullable(),
+  /** The user's own first prompt, clipped - deterministic "what was this about" context. */
+  context: z.string().nullable().optional(),
+  /** 2-5 word label from the LLM narrator; null when no narrator ran (never guessed). */
+  topic: z.string().nullable().optional(),
+  /** One of SESSION_CATEGORIES from the narrator; null when no narrator ran. */
+  category: z.string().nullable().optional(),
   insights: z.array(insightSchema),
   summarizerVersion: z.string(),
   generatedAt: isoString,

@@ -212,6 +212,19 @@ export default function Reports() {
             }}
           >
             <TopBars title="Top models" rows={byDim.model} delay={120} c={c} />
+            <TopBars
+              title="Top projects"
+              rows={byDim.project}
+              delay={140}
+              c={c}
+            />
+            <TopBars title="Top topics" rows={byDim.topic} delay={150} c={c} />
+            <TopBars
+              title="Categories"
+              rows={byDim.category}
+              delay={160}
+              c={c}
+            />
             <TopBars title="Top skills" rows={byDim.skill} delay={160} c={c} />
             <TopBars title="Top tools" rows={byDim.tool} delay={200} c={c} />
             <TopBars title="Top users" rows={byDim.user} delay={240} c={c} />

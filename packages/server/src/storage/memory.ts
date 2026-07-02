@@ -7,6 +7,7 @@ import {
   sessionFacets,
   eventFacets,
   eventTokens,
+  summaryFacets,
 } from "@wrud/shared";
 import type {
   StorageAdapter,
@@ -52,11 +53,13 @@ export class MemoryStorageAdapter implements StorageAdapter {
     return s ? clone(s) : undefined;
   }
 
-  /** The full facet set of a session (creation facets + the union across its events). */
+  /** The full facet set of a session (creation facets + event union + summary facets). */
   private facetsOf(s: Session): Facet[] {
     const out = [...sessionFacets(s)];
     for (const e of this.events.get(s.id)?.values() ?? [])
       out.push(...eventFacets(e));
+    const sum = this.summaries.get(s.id);
+    if (sum) out.push(...summaryFacets(sum));
     return out;
   }
   private tokensOf(s: Session): { input: number; output: number } {

@@ -13,6 +13,7 @@ import {
   newId,
   eventSchema,
   buildBaseSummary,
+  parseNarratorOutput,
   SUMMARY_SYSTEM_PROMPT,
   buildSummaryUserPrompt,
   type CreateSessionRequest,
@@ -181,9 +182,11 @@ class SessionHandle {
     // Start from the deterministic narrative so a narrator failure degrades gracefully
     // (keeps a real summary) instead of nulling it out.
     let narrative: string | null = base.narrative;
+    let topic: string | null = null;
+    let category: string | null = null;
     if (narrator) {
       try {
-        narrative = await narrator({
+        const raw = await narrator({
           systemPrompt: SUMMARY_SYSTEM_PROMPT,
           userPrompt: buildSummaryUserPrompt(
             base.stats,
@@ -193,6 +196,10 @@ class SessionHandle {
           stats: base.stats,
           insights: base.insights,
         });
+        const parsed = parseNarratorOutput(raw);
+        narrative = parsed.narrative ?? base.narrative;
+        topic = parsed.topic;
+        category = parsed.category;
       } catch {
         /* keep the deterministic base.narrative */
       }
@@ -200,6 +207,8 @@ class SessionHandle {
     const summary: SessionSummary = {
       ...base,
       narrative,
+      topic,
+      category,
       summarizerVersion: narrator ? "client-ai@1" : "client-deterministic@1",
       summarizedBy: "client",
     };

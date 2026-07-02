@@ -17,6 +17,7 @@ import {
   sessionFacets,
   eventFacets,
   eventTokens,
+  summaryFacets,
 } from "@wrud/shared";
 import type {
   StorageAdapter,
@@ -46,6 +47,25 @@ export class SqliteStorageAdapter implements StorageAdapter {
     this.db.exec(SCHEMA_SQL);
     this.ensureColumns(); // add rollup columns to DBs created before this feature
     this.backfillFacets(); // populate the facet index for pre-existing sessions, once
+    this.backfillProjectFacets(); // add the `project` dim to DBs indexed before it existed
+  }
+
+  /** One-time: DBs whose facet index predates the `project` dim get it derived from cwd. */
+  private backfillProjectFacets() {
+    const n = (
+      this.db
+        .prepare(`SELECT COUNT(*) n FROM session_facets WHERE dim = 'project'`)
+        .get() as any
+    ).n;
+    if (n > 0) return;
+    const rows = this.db.prepare(`SELECT * FROM sessions`).all() as any[];
+    if (!rows.length) return;
+    const tx = this.db.transaction(() => {
+      // sessionFacets returns user+agent+project; INSERT OR IGNORE skips the existing two.
+      for (const r of rows)
+        this.insertFacets(r.id, sessionFacets(this.rowToSession(r)));
+    });
+    tx();
   }
 
   /** ALTER in the rollup counters for an old `sessions` table (CREATE IF NOT EXISTS is a no-op there). */
@@ -425,11 +445,21 @@ export class SqliteStorageAdapter implements StorageAdapter {
   }
 
   async saveSummary(s: SessionSummary) {
-    this.db
-      .prepare(
-        `INSERT OR REPLACE INTO summaries (session_id, json) VALUES (?, ?)`,
-      )
-      .run(s.sessionId, JSON.stringify(s));
+    const tx = this.db.transaction(() => {
+      this.db
+        .prepare(
+          `INSERT OR REPLACE INTO summaries (session_id, json) VALUES (?, ?)`,
+        )
+        .run(s.sessionId, JSON.stringify(s));
+      // Topic/category facets belong to the summary - re-summarizing replaces them.
+      this.db
+        .prepare(
+          `DELETE FROM session_facets WHERE session_id = ? AND dim IN ('topic','category')`,
+        )
+        .run(s.sessionId);
+      this.insertFacets(s.sessionId, summaryFacets(s));
+    });
+    tx();
   }
   async getSummary(sessionId: string) {
     const r = this.db

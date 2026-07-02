@@ -12,6 +12,25 @@ import type {
   Insight,
   InsightAnalyzer,
 } from "./index.js";
+import { estimateCostUsd } from "./pricing.js";
+
+/**
+ * Fixed category enum for session classification - mirrors Anthropic's published Claude
+ * Code task taxonomy, compressed for a personal dashboard. A small fixed enum is the
+ * filterable axis; the free-form `topic` label carries the specificity.
+ */
+export const SESSION_CATEGORIES = [
+  "debugging",
+  "feature",
+  "refactor",
+  "research",
+  "design",
+  "content",
+  "ops",
+  "data",
+  "other",
+] as const;
+export type SessionCategory = (typeof SESSION_CATEGORIES)[number];
 
 /* ---------- deterministic stats (pure fold over events) ---------- */
 export function deterministicStats(events: Event[]): SummaryStats {
@@ -98,33 +117,42 @@ export function modelTier(model: string): Tier | undefined {
 
 export interface RightsizingThresholds {
   maxOutputTokens: number;
-  maxEvents: number;
 }
+/** Haiku-class reference rates for the "what it could have cost" comparison ($/MTok). */
+const LOW_TIER_IN_PER_M = 1;
+const LOW_TIER_OUT_PER_M = 5;
+const fmtUsd = (n: number): string => (n < 0.01 ? n.toFixed(4) : n.toFixed(2));
+
 export class ModelRightsizingAnalyzer implements InsightAnalyzer {
-  constructor(
-    private t: RightsizingThresholds = { maxOutputTokens: 200, maxEvents: 5 },
-  ) {}
+  constructor(private t: RightsizingThresholds = { maxOutputTokens: 400 }) {}
   analyze(summary: SessionSummary, _events: Event[]): Insight[] {
-    if (summary.stats.errorCount > 0) return [];
     const out: Insight[] = [];
     for (const m of summary.stats.models) {
-      if (
-        modelTier(m.model) === "high" &&
-        m.outputTokens <= this.t.maxOutputTokens &&
-        summary.stats.eventCount <= this.t.maxEvents
-      ) {
-        out.push({
-          type: "model_rightsizing",
-          severity: "warn",
-          title: "High-tier model used for a small task",
-          detail: `${m.model} produced only ${m.outputTokens} output tokens over ${summary.stats.eventCount} events - a lighter, cheaper model may have sufficed.`,
-          evidence: {
-            model: m.model,
-            outputTokens: m.outputTokens,
-            eventCount: summary.stats.eventCount,
-          },
-        });
-      }
+      // Facts only: a high-tier model that produced real-but-small output. The old error
+      // and event-count gates suppressed the flag on every real session, and zero-token
+      // rows (agents that report model name only) flagged as noise - both are gone.
+      if (modelTier(m.model) !== "high") continue;
+      if (m.outputTokens <= 0 || m.outputTokens > this.t.maxOutputTokens)
+        continue;
+      const est = estimateCostUsd([m]);
+      const low =
+        (m.inputTokens * LOW_TIER_IN_PER_M +
+          m.outputTokens * LOW_TIER_OUT_PER_M) /
+        1e6;
+      out.push({
+        type: "model_rightsizing",
+        severity: "warn",
+        title: "High-tier model used for a small task",
+        detail: `${m.model} produced only ${m.outputTokens} output tokens${
+          est != null ? ` (~$${fmtUsd(est)} vs ~$${fmtUsd(low)} low-tier)` : ""
+        } - a lighter, cheaper model may have sufficed.`,
+        evidence: {
+          model: m.model,
+          outputTokens: m.outputTokens,
+          eventCount: summary.stats.eventCount,
+          ...(est != null ? { estCostUsd: est, lowTierCostUsd: low } : {}),
+        },
+      });
     }
     return out;
   }
@@ -160,12 +188,27 @@ export function buildBaseSummary(
   analyzers: InsightAnalyzer[] = defaultAnalyzers(),
 ): SessionSummary {
   const stats = deterministicStats(events);
+  const firstUser = events.find(
+    (e) =>
+      e.type === "message" &&
+      e.payload.role === "user" &&
+      typeof e.payload.text === "string" &&
+      e.payload.text.trim(),
+  );
   const base: SessionSummary = {
     sessionId: session.id,
     stats,
     // No deterministic narrative - a session with no LLM narrative stays blank rather than
     // showing a stats-template sentence. The LLM narrator (composite) fills this when present.
     narrative: null,
+    // Deterministic context = the user's own first prompt (a fact). Topic/category come
+    // only from the LLM narrator - without one they stay null, never keyword-guessed.
+    context:
+      firstUser?.type === "message" && firstUser.payload.text
+        ? clipLine(firstUser.payload.text.trim(), 280)
+        : null,
+    topic: null,
+    category: null,
     insights: [],
     summarizerVersion: "deterministic@1",
     generatedAt: now.toISOString(),
@@ -180,10 +223,49 @@ export function buildBaseSummary(
 export const SUMMARY_SYSTEM_PROMPT =
   "You are wrud, a session recorder for AI agents. You are given the actual conversation " +
   "of one session - the user's prompts, the agent's replies, and the tools it ran - plus summary " +
-  "stats for context. Write a neutral, concrete 2-4 sentence summary of WHAT THE USER WANTED and " +
-  "WHAT THE AGENT ACTUALLY DID AND ACCOMPLISHED. Summarize the substance of the work, not the " +
-  "metrics (do not just restate event/token counts). No preamble, no markdown, no bullet points - " +
-  "just the sentences.";
+  "stats for context. Respond with EXACTLY these three tagged blocks and nothing else:\n" +
+  "<summary>A neutral, concrete 2-4 sentence summary of WHAT THE USER WANTED and WHAT THE " +
+  "AGENT ACTUALLY DID AND ACCOMPLISHED. Summarize the substance of the work, not the metrics. " +
+  "No preamble, no markdown, no bullet points.</summary>\n" +
+  "<topic>a specific 2-5 word label for what the session was about, in the user's own terms, lowercase</topic>\n" +
+  `<category>exactly one word from: ${SESSION_CATEGORIES.join(", ")}</category>`;
+
+export interface NarratorFields {
+  narrative: string | null;
+  topic: string | null;
+  category: SessionCategory | null;
+}
+
+/**
+ * Parse the narrator's tagged output. Flat tags + per-tag regex so one malformed field
+ * doesn't kill the others; an untagged response (older prompt, chatty model) is treated
+ * as a plain narrative. Unknown categories collapse to "other" - never invented.
+ */
+export function parseNarratorOutput(raw: string): NarratorFields {
+  const text = (raw ?? "").trim();
+  if (!text) return { narrative: null, topic: null, category: null };
+  const tag = (name: string): string | null => {
+    const m = new RegExp(`<${name}>([\\s\\S]*?)</${name}>`, "i").exec(text);
+    const v = m?.[1]?.trim();
+    return v ? v : null;
+  };
+  const summary = tag("summary");
+  const topicRaw = tag("topic");
+  const catRaw = tag("category");
+  if (summary == null && topicRaw == null && catRaw == null)
+    return { narrative: text, topic: null, category: null };
+  const cat = catRaw?.toLowerCase() ?? null;
+  return {
+    narrative: summary,
+    topic: topicRaw ? clipLine(topicRaw.toLowerCase(), 60) : null,
+    category:
+      cat == null
+        ? null
+        : (SESSION_CATEGORIES as readonly string[]).includes(cat)
+          ? (cat as SessionCategory)
+          : "other",
+  };
+}
 
 const clipLine = (s: string, n: number): string =>
   s.length > n ? s.slice(0, n) + "..." : s;
