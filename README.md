@@ -7,7 +7,7 @@
 
 # wrud
 
-**What R U Doing** - a local-first, open-source recorder for AI coding-agent sessions.
+**What R U Doing** - a local-first, open-source recorder for AI agent sessions.
 
 [![npm](https://img.shields.io/npm/v/@wrud/cli.svg)](https://www.npmjs.com/package/@wrud/cli)
 [![license: MIT](https://img.shields.io/badge/license-MIT-b6f24e.svg)](LICENSE)
