@@ -104,6 +104,7 @@ Source diagram: [`docs/architecture.mmd`](docs/architecture.mmd)
 | ----------- | ------------------------------- | ---------------------------------------- | ------------------------------------------------------ |
 | Claude Code | `~/.claude/settings.json` hooks | Full (per model)                         | [`providers/claude-code.md`](providers/claude-code.md) |
 | Cursor 1.7+ | `~/.cursor/hooks.json`          | Model name only (token numbers deferred) | [`providers/cursor.md`](providers/cursor.md)           |
+| Codex CLI   | `~/.codex/config.toml` `notify` | Turn metadata (token numbers deferred)   | [`providers/codex.md`](providers/codex.md)             |
 
 The hooks fire whatever the work is - the same capture whether your agent is shipping code,
 drafting campaign copy, or cleaning a spreadsheet. Recording is about the agent, not the task.
