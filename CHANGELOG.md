@@ -9,13 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.6.0] - 2026-07-02
+
 ### Added
 
+- **`~$` cost estimates across the dashboard** from a built-in list-price table
+  (`@wrud/shared/pricing`, prices verified 2026-07-02): a `~$` column on the Sessions
+  list, a `~$ cost` tile + per-model cost on the session detail, and a `~$ cost (est.)`
+  rollup on the Overview. Estimates use list prices only - cache discounts are not
+  modeled, so cache-heavy sessions read as an upper bound; unknown models show `-`
+  instead of a wrong number.
 - OSS community health files: CONTRIBUTING.md, CODE_OF_CONDUCT.md, CHANGELOG.md
 - GitHub issue templates (bug report, feature request)
 - Pull request template
 - Improved CI workflow with separate lint/test/build jobs
 - Repository description and topic tags
+
+### Changed
+
+- **Messaging is "AI-agent sessions" everywhere** (README, npm README, dashboard
+  onboarding, and the narrator prompt) - wrud records any agent's work; coding is one
+  segment, not the category.
+
+### Fixed
+
+- **Chart tooltips are readable in dark mode** - recharts inlines item text as black
+  when bar fills live on `<Cell>`s; the theme now forces tooltip text to ink.
+- **Lessons empty-state and cards are theme-aware** (no more hardcoded white borders in
+  light mode) and lesson cards carry a tone-colored accent border.
 
 ---
 
