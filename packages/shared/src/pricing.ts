@@ -1,0 +1,112 @@
+/**
+ * Static list-price table (USD per million tokens) for the ~$ cost estimates shown in the
+ * dashboard. Estimates are deliberately approximate:
+ *
+ * - Cache discounts are NOT modeled. Providers bill cache reads at ~0.1x the input rate,
+ *   and wrud's inputTokens fold cache reads in at full weight (see cli transcript
+ *   aggregation) - so for cache-heavy agents like Claude Code the estimate is an UPPER
+ *   BOUND on the real bill.
+ * - Context-length tiers (Gemini Pro >200k) and batch discounts are not modeled either.
+ *
+ * Prices verified 2026-07-02 against the providers' official pricing pages.
+ * ponytail: static table - revisit when a provider reprices (known: Sonnet 5 goes
+ * $2/$10 -> $3/$15 on 2026-09-01; Opus 4.1 retires 2026-08-05).
+ */
+
+export interface ModelPrice {
+  inputPerMTok: number;
+  outputPerMTok: number;
+}
+
+/**
+ * Ordered most-specific-first; the first pattern found in the normalized model id wins.
+ * Patterns shorter than 4 chars must match the id's start (guards "o3" against substrings).
+ */
+const PRICES: Array<[pattern: string, inPerM: number, outPerM: number]> = [
+  // Anthropic (dated snapshots + Bedrock/Vertex prefixes handled by normalize())
+  ["fable-5", 10, 50],
+  ["mythos-5", 10, 50],
+  ["opus-4-1", 15, 75],
+  ["opus-4-5", 5, 25],
+  ["opus-4-6", 5, 25],
+  ["opus-4-7", 5, 25],
+  ["opus-4-8", 5, 25],
+  ["opus-4", 15, 75], // bare Opus 4 (retired) - must come after the 4-x rules above
+  ["opus", 5, 25],
+  ["sonnet-5", 2, 10], // intro price; 3/15 from 2026-09-01
+  ["3-5-haiku", 0.8, 4],
+  ["sonnet", 3, 15],
+  ["haiku", 1, 5],
+  // OpenAI
+  ["gpt-5.5", 5, 30],
+  ["gpt-5.4-mini", 0.75, 4.5],
+  ["gpt-5.4-nano", 0.2, 1.25],
+  ["gpt-5.4", 2.5, 15],
+  ["gpt-5.3-codex", 1.75, 14],
+  ["gpt-5-mini", 0.25, 2],
+  ["gpt-5-nano", 0.05, 0.4],
+  ["gpt-5", 1.25, 10], // also covers gpt-5-codex
+  ["gpt-4.1", 2, 8],
+  ["o3", 2, 8],
+  // Google (<=200k-token tier for the Pro models)
+  ["gemini-3.5-flash", 1.5, 9],
+  ["gemini-3.1-pro", 2, 12],
+  ["gemini-3.1-flash-lite", 0.25, 1.5],
+  ["gemini-3-pro", 2, 12],
+  ["gemini-3-flash", 0.5, 3],
+  ["gemini-2.5-flash-lite", 0.1, 0.4],
+  ["gemini-2.5-pro", 1.25, 10],
+  ["gemini-2.5-flash", 0.3, 2.5],
+  // xAI
+  ["grok-code", 0.2, 1.5],
+  ["grok", 1.25, 2.5],
+];
+
+/** Strip provider routing prefixes and version/date suffixes so patterns match everywhere. */
+function normalize(id: string): string {
+  return id
+    .toLowerCase()
+    .replace(/^(us\.|eu\.|apac\.)?anthropic\./, "") // Bedrock: us.anthropic.claude-...
+    .replace(/-v\d+:\d+$/, "") // Bedrock: ...-v1:0
+    .replace(/@\d{8}$/, "") // Vertex: ...@20250929
+    .replace(/-\d{8}$/, ""); // dated snapshots: ...-20251001
+}
+
+export function priceForModel(model: string): ModelPrice | undefined {
+  const id = normalize(model);
+  for (const [pattern, inPerM, outPerM] of PRICES) {
+    const hit =
+      pattern.length < 4 ? id.startsWith(pattern) : id.includes(pattern);
+    if (hit) return { inputPerMTok: inPerM, outputPerMTok: outPerM };
+  }
+  return undefined;
+}
+
+/**
+ * ~$ for a set of per-model token counts. Returns null when any model that actually used
+ * tokens has no known price - a partial sum would read as "the whole session cost $0.02".
+ */
+export function estimateCostUsd(
+  models: Array<{ model: string; inputTokens: number; outputTokens: number }>,
+): number | null {
+  let total = 0;
+  let priced = false;
+  for (const m of models) {
+    if (!m.inputTokens && !m.outputTokens) continue;
+    const p = priceForModel(m.model);
+    if (!p) return null;
+    total +=
+      (m.inputTokens * p.inputPerMTok + m.outputTokens * p.outputPerMTok) / 1e6;
+    priced = true;
+  }
+  return priced ? total : null;
+}
+
+/** Table-friendly rendering: "-" for unknown, "~$0.004" tiny, "~$1.23", "~$1,234". */
+export function formatApproxUsd(n: number | null | undefined): string {
+  if (n == null) return "-";
+  if (n === 0) return "$0";
+  if (n < 0.01) return "~$" + n.toFixed(3);
+  if (n < 100) return "~$" + n.toFixed(2);
+  return "~$" + Math.round(n).toLocaleString("en-US");
+}

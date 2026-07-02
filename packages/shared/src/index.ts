@@ -5,6 +5,7 @@ export * from "./schemas.js";
 export * from "./interfaces.js";
 export * from "./summarize.js";
 export * from "./facets.js";
+export * from "./pricing.js";
 export { newId, isoString } from "./ids.js";
 
 export type Session = z.infer<typeof S.sessionSchema>;

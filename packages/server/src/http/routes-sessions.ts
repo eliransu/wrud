@@ -14,6 +14,7 @@ import {
   summarizeRequestSchema,
   storeSummaryRequestSchema,
   sessionPublicSchema,
+  estimateCostUsd,
   newId,
   type Session,
   type SessionSummary,
@@ -158,18 +159,36 @@ sessionRoutes.get("/sessions", requireScope("read"), async (c) => {
   const page = await storage.listSessions(parseSessionFilter(c.req.query()));
   // Enrich each row with its rollup (models from the facet index; tokens/events from counters).
   const stats = await storage.sessionStats(page.items.map((s) => s.id));
-  const items = page.items.map((s) => {
+  // ~$ needs per-model token splits, which live on the summary. ponytail: one point-lookup
+  // per row (page <= 100) is fine on local storage; counters cover single-model live sessions.
+  const summaries = await Promise.all(
+    page.items.map((s) => storage.getSummary(s.id)),
+  );
+  const items = page.items.map((s, i) => {
     const st = stats[s.id] ?? {
       events: 0,
       models: [],
       inputTokens: 0,
       outputTokens: 0,
     };
+    const summary = summaries[i];
+    const estCostUsd = summary
+      ? estimateCostUsd(summary.stats.models)
+      : st.models.length === 1
+        ? estimateCostUsd([
+            {
+              model: st.models[0]!,
+              inputTokens: st.inputTokens,
+              outputTokens: st.outputTokens,
+            },
+          ])
+        : null;
     return {
       ...sessionPublicSchema.parse(s),
       models: st.models,
       tokens: { input: st.inputTokens, output: st.outputTokens },
       events: st.events,
+      estCostUsd,
     };
   });
   return c.json({ items, nextCursor: page.nextCursor }, 200);

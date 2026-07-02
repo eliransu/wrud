@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { Spin, Table, Empty, Tag } from "antd";
 import { WarningOutlined } from "@ant-design/icons";
+import { estimateCostUsd, formatApproxUsd } from "@wrud/shared/pricing";
 import { api } from "../api";
 import { useApi } from "../hooks";
 import { PageHeader, Pill, StatTile, Surface } from "../ui";
@@ -126,6 +127,7 @@ export default function SessionDetail() {
     return <Spin style={{ display: "block", marginTop: 80 }} />;
 
   const { session, summary } = data;
+  const cost = summary ? estimateCostUsd(summary.stats.models) : null;
   return (
     <>
       <PageHeader
@@ -211,7 +213,7 @@ export default function SessionDetail() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
+              gridTemplateColumns: `repeat(${cost != null ? 5 : 4}, 1fr)`,
               gap: 16,
               marginTop: 16,
             }}
@@ -232,6 +234,15 @@ export default function SessionDetail() {
               value={Object.keys(summary.stats.toolCalls).length}
               delay={180}
             />
+            {cost != null && (
+              // useCountUp animates integers - feed cents, format back to ~$.
+              <StatTile
+                label="~$ cost"
+                value={Math.round(cost * 100)}
+                format={(n) => formatApproxUsd(n / 100)}
+                delay={240}
+              />
+            )}
           </div>
 
           <Surface title="Models" style={{ marginTop: 16 }} delay={120}>
@@ -241,25 +252,37 @@ export default function SessionDetail() {
                   No model usage recorded.
                 </span>
               ) : (
-                summary.stats.models.map((m: any) => (
-                  <span
-                    key={m.model}
-                    className="wd-mono"
-                    style={{
-                      fontSize: 12.5,
-                      padding: "6px 12px",
-                      borderRadius: 8,
-                      border: "1px solid rgba(255,255,255,0.1)",
-                      background: "rgba(255,255,255,0.03)",
-                    }}
-                  >
-                    {m.model} -{" "}
-                    <span style={{ color: "var(--signal)" }}>
-                      {m.outputTokens}
-                    </span>{" "}
-                    out tok
-                  </span>
-                ))
+                summary.stats.models.map((m: any) => {
+                  const mCost = estimateCostUsd([m]);
+                  return (
+                    <span
+                      key={m.model}
+                      className="wd-mono"
+                      style={{
+                        fontSize: 12.5,
+                        padding: "6px 12px",
+                        borderRadius: 8,
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        background: "rgba(255,255,255,0.03)",
+                      }}
+                    >
+                      {m.model} -{" "}
+                      <span style={{ color: "var(--signal)" }}>
+                        {m.outputTokens}
+                      </span>{" "}
+                      out tok
+                      {mCost != null && (
+                        <>
+                          {" "}
+                          -{" "}
+                          <span style={{ color: "var(--amber)" }}>
+                            {formatApproxUsd(mCost)}
+                          </span>
+                        </>
+                      )}
+                    </span>
+                  );
+                })
               )}
             </div>
           </Surface>

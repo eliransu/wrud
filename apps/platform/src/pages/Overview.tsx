@@ -11,6 +11,7 @@ import {
   Pie,
   Cell as PieCell,
 } from "recharts";
+import { estimateCostUsd, formatApproxUsd } from "@wrud/shared/pricing";
 import { api } from "../api";
 import { useApi, LIVE_POLL_MS } from "../hooks";
 import { useThemeMode } from "../theme-mode";
@@ -76,6 +77,7 @@ export default function Overview() {
   const statusData = Object.entries(data.sessions.byStatus).map(
     ([name, value]) => ({ name, value: value as number }),
   );
+  const estCost = estimateCostUsd(data.models);
 
   const items: any[] = sessions?.items ?? [];
   const agents = Object.entries(
@@ -95,7 +97,7 @@ export default function Overview() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(5, 1fr)",
+          gridTemplateColumns: `repeat(${estCost != null ? 6 : 5}, 1fr)`,
           gap: 16,
         }}
       >
@@ -112,6 +114,15 @@ export default function Overview() {
           format={compact}
           delay={120}
         />
+        {estCost != null && (
+          // useCountUp animates integers - feed cents, format back to ~$.
+          <StatTile
+            label="~$ cost (est.)"
+            value={Math.round(estCost * 100)}
+            format={(n) => formatApproxUsd(n / 100)}
+            delay={150}
+          />
+        )}
         <StatTile label="Lessons" value={data.lessons.total} delay={180} />
         <StatTile label="Models" value={data.models.length} delay={240} />
       </div>

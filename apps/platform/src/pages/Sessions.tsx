@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { Table, Button, message } from "antd";
 import { useNavigate } from "react-router-dom";
+import { formatApproxUsd } from "@wrud/shared/pricing";
 import { api } from "../api";
 import { PageHeader, Pill, Surface } from "../ui";
 import {
@@ -200,6 +201,22 @@ export default function Sessions() {
                   </span>
                 );
               },
+            },
+            {
+              title: "~$",
+              dataIndex: "estCostUsd",
+              align: "right" as const,
+              render: (v: number | null | undefined) => (
+                <span
+                  className="wd-mono"
+                  style={{
+                    fontSize: 12.5,
+                    color: v == null ? "var(--muted)" : "var(--amber)",
+                  }}
+                >
+                  {formatApproxUsd(v)}
+                </span>
+              ),
             },
             {
               title: "Status",
