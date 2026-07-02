@@ -465,3 +465,8 @@ h4 {
   font-family: var(--mono);
   font-size: 12px;
 }
+/* Recharts inlines item color as `entry.color || '#000'`; our bars set fill on <Cell>,
+   so entry.color is undefined -> black text on the dark tooltip. Force theme ink. */
+.recharts-default-tooltip .recharts-tooltip-item {
+  color: var(--ink) !important;
+}

@@ -45,8 +45,8 @@ function NoLessons() {
               gap: 12,
               padding: "14px 16px",
               borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.07)",
-              background: "rgba(255,255,255,0.02)",
+              border: "1px solid rgb(var(--ov) / 0.14)",
+              background: "rgb(var(--ov) / 0.05)",
             }}
           >
             <BulbOutlined style={{ color: "var(--signal)", fontSize: 16 }} />
@@ -100,7 +100,7 @@ export default function Lessons() {
                 className="wd-card wd-rise"
                 style={{
                   animationDelay: `${i * 60}ms`,
-                  borderColor: "rgba(255,255,255,0.08)",
+                  borderLeft: `3px solid ${tone}`,
                 }}
               >
                 <div

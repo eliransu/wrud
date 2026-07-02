@@ -32,7 +32,11 @@ test("lists the seeded session and shows its model-rightsizing insight", async (
   await connect(page);
   await page.getByRole("menuitem", { name: "Sessions" }).click();
   await expect(page.getByRole("heading", { name: "Sessions" })).toBeVisible();
-  await page.getByRole("link", { name: /.../ }).first().click();
+  // Rows are clickable (no per-cell link since 2ad810f) - click the first data row.
+  await page
+    .getByRole("row", { name: /\.\.\./ })
+    .first()
+    .click();
   await expect(
     page.getByText("High-tier model used for a small task"),
   ).toBeVisible();
