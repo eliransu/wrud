@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.7.4] - 2026-07-02
 
+### Added
+
+- **Numbered server-side pagination** - `GET /v1/sessions` and
+  `GET /v1/sessions/:id/events` accept `offset` (alongside the existing keyset `cursor`)
+  and return `total`; the events endpoint also takes `order=asc|desc` and pages in SQL.
+  The Sessions table swaps "Load more" for numbered pages with a working page-size
+  selector, and the session event log pages server-side (newest first) - its page-size
+  selector, previously inert, works now. Reports/Keys tables got the same size-changer fix.
+
 ### Fixed
 
 - **Honest cost estimates** - cache tokens are no longer billed at the full input rate.
