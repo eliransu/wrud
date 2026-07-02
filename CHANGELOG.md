@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rollup on the Overview. Estimates use list prices only - cache discounts are not
   modeled, so cache-heavy sessions read as an upper bound; unknown models show `-`
   instead of a wrong number.
+- **Topics & categories.** The narrator now returns a tagged `<summary><topic><category>`
+  response in its single existing call: a free-form 2-5 word topic plus one of nine fixed
+  categories (debugging, feature, refactor, research, design, content, ops, data, other -
+  Anthropic's published Claude Code task taxonomy). Both become filterable facets and chart
+  on Reports ("Top topics", "Categories", "Top projects") and the Overview ("By category",
+  "Top projects"). Without a narrator nothing is guessed: topic/category stay null and the
+  deterministic `project` facet (cwd basename - a fact) carries the dimension.
+- **Context column on Sessions** - the user's own first prompt per session, clipped, with
+  the full text on native hover; shows the LLM topic + category once summarized.
 - OSS community health files: CONTRIBUTING.md, CODE_OF_CONDUCT.md, CHANGELOG.md
 - GitHub issue templates (bug report, feature request)
 - Pull request template
@@ -32,6 +41,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Messaging is "AI-agent sessions" everywhere** (README, npm README, dashboard
   onboarding, and the narrator prompt) - wrud records any agent's work; coding is one
   segment, not the category.
+- **Right-sizing insight actually fires now, with dollars.** The old gates (zero errors,
+  ≤5 events) suppressed the flag on every real session, and zero-token model rows flagged
+  as noise. v2: any high-tier model with real-but-small output (≤400 tokens) flags, with
+  `~$actual vs ~$low-tier` amounts in the insight and the lesson.
+- **Lessons page dedups.** The same insight recurring across sessions renders as one card
+  with a `seen ×N` counter instead of a wall of identical cards.
 
 ### Fixed
 
@@ -39,6 +54,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when bar fills live on `<Cell>`s; the theme now forces tooltip text to ink.
 - **Lessons empty-state and cards are theme-aware** (no more hardcoded white borders in
   light mode) and lesson cards carry a tone-colored accent border.
+- **Installs on Node 26.** `better-sqlite3` bumped `^11` → `^12`: v11 has no Node 26
+  prebuilds and its source no longer compiles against Node 26's V8 headers, so
+  `npx @wrud/cli` failed for anyone on current Node. v12 ships prebuilt platform binaries
+  (no node-gyp, no build tools needed). Verified end-to-end on Node 26.4.0.
 
 ---
 
