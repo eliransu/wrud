@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.7] - 2026-07-02
+
+### Changed
+
+- **Cleaner session stats row** - dropped the redundant Errors tile and the
+  overflowing Tokens in/out tiles; token totals now live in the Models card
+  under the per-model breakdown.
+
+---
+
 ## [0.7.6] - 2026-07-02
 
 ### Added
