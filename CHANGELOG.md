@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.5] - 2026-07-02
+
+### Fixed
+
+- **Event log stays inside its card** - long tool names / previews made the session
+  event log bleed past the card border; it now scrolls horizontally inside the card,
+  same as the Sessions table.
+
+---
+
 ## [0.7.4] - 2026-07-02
 
 ### Added
