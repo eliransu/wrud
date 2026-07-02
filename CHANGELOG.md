@@ -11,6 +11,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.6] - 2026-07-02
+
+### Added
+
+- **`wrud -d` / `wrud --detach`** - start the server in the background,
+  docker-compose-`-d` style. Prints the dashboard URL + token and returns;
+  logs go to `~/.wrud/server.log`, stop with `wrud stop`. No browser pop
+  in background mode.
+- **Token totals on the session page** - the session detail stats row now
+  shows total input and output tokens (summed across models).
+
+### Fixed
+
+- **Bare flags start the server** - `wrud --no-install-hooks` (without
+  `run`/`start`) errored with "unknown command"; leading flags now mean
+  "start the server".
+
+### Changed
+
+- **Session status as a plain tag** - open/summarizing/summarized/abandoned
+  render as antd Tags (no LED dot) on Sessions, Reports, and the session page.
+
+---
+
 ## [0.7.5] - 2026-07-02
 
 ### Fixed
