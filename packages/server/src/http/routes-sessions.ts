@@ -190,6 +190,7 @@ sessionRoutes.get("/sessions", requireScope("read"), async (c) => {
       events: st.events,
       estCostUsd,
       context: summary?.context ?? null,
+      narrative: summary?.narrative ?? null,
       topic: summary?.topic ?? null,
       category: summary?.category ?? null,
     };

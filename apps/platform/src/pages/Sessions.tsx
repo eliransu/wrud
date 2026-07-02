@@ -84,7 +84,7 @@ export default function Sessions() {
       <FacetFilterBar
         value={filters}
         onChange={setFilters}
-        dims={["user", "agent", "project", "model", "category", "status"]}
+        dims={["user", "agent", "project", "model", "status"]}
         showTokens={false}
         showError={false}
       />
@@ -95,6 +95,8 @@ export default function Sessions() {
           loading={loading}
           dataSource={items}
           pagination={false}
+          // wider than the card? scroll inside it instead of bleeding past the border
+          scroll={{ x: "max-content" }}
           locale={{ emptyText: "No sessions match" }}
           // whole row navigates to the session (not just the id cell)
           onRow={(r: any) => ({
@@ -130,32 +132,29 @@ export default function Sessions() {
               ),
             },
             {
-              title: "Context",
-              key: "context",
+              title: "Summary",
+              key: "summary",
               render: (_: unknown, r: any) => {
-                const label = r.topic ?? r.context;
+                // Cell = topic label (or the recap itself); native-title popover = the
+                // full summarized content (falls back to the first prompt pre-summary).
+                const full = r.narrative ?? r.context;
+                const label = r.topic ?? full;
                 if (!label)
                   return <span style={{ color: "var(--muted)" }}>-</span>;
-                // native title carries the full first prompt - no popover component
                 return (
                   <span
                     className="wd-mono"
-                    title={r.context ?? undefined}
+                    title={full ?? undefined}
                     style={{
                       fontSize: 12,
                       display: "inline-block",
-                      maxWidth: 220,
+                      maxWidth: 260,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
                       verticalAlign: "middle",
                     }}
                   >
-                    {r.category && (
-                      <span style={{ color: "var(--cyan)" }}>
-                        {r.category} ·{" "}
-                      </span>
-                    )}
                     {label}
                   </span>
                 );
@@ -261,7 +260,13 @@ export default function Sessions() {
               title: "Started",
               dataIndex: "startedAt",
               render: (t: string) => (
-                <span style={{ color: "var(--muted)", fontSize: 13 }}>
+                <span
+                  style={{
+                    color: "var(--muted)",
+                    fontSize: 13,
+                    whiteSpace: "nowrap",
+                  }}
+                >
                   {new Date(t).toLocaleString()}
                 </span>
               ),

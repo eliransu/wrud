@@ -13,10 +13,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.7.1] - 2026-07-02
 
+### Changed
+
+- **Sessions "Context" column is now "Summary"** - the cell shows the topic (or recap) and
+  the native-hover popover shows the full summarized recap, falling back to the first
+  prompt for sessions not yet summarized. Existing summaries populate immediately (the
+  recap already exists); no category prefix in the cell.
+- **Category filter removed from the Sessions page** (still available on Reports, where
+  the full dimension set lives).
+
 ### Fixed
 
 - **Overview `~$ cost (est.)` tile no longer overflows** - totals ≥ $1,000 render compact
   ("~$2.8K") like the token tiles instead of spilling out of the six-column stat grid.
+- **Sessions table no longer bleeds past the card border** - it scrolls horizontally
+  inside the card when columns exceed the width, and the Started timestamp stays on one
+  line.
 
 ---
 
