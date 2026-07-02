@@ -227,36 +227,29 @@ export default function SessionDetail() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: `repeat(${cost != null ? 7 : 6}, 1fr)`,
+              gridTemplateColumns: `repeat(${cost != null ? 4 : 3}, 1fr)`,
               gap: 16,
               marginTop: 16,
             }}
           >
             <StatTile label="Events" value={summary.stats.eventCount} accent />
             <StatTile
-              label="Errors"
-              value={summary.stats.errorCount}
-              delay={60}
-            />
-            <StatTile
               label="Duration (s)"
               value={Math.round(summary.stats.durationMs / 1000)}
-              delay={120}
+              delay={60}
             />
             <StatTile
               label="Tools"
               value={Object.keys(summary.stats.toolCalls).length}
-              delay={180}
+              delay={120}
             />
-            <StatTile label="Tokens in" value={tokens.in} delay={240} />
-            <StatTile label="Tokens out" value={tokens.out} delay={300} />
             {cost != null && (
               // useCountUp animates integers - feed cents, format back to ~$.
               <StatTile
                 label="~$ cost"
                 value={Math.round(cost * 100)}
                 format={(n) => formatApproxUsd(n / 100)}
-                delay={360}
+                delay={180}
               />
             )}
           </div>
@@ -301,6 +294,15 @@ export default function SessionDetail() {
                 })
               )}
             </div>
+            {summary.stats.models.length > 0 && (
+              <div
+                className="wd-mono"
+                style={{ marginTop: 12, fontSize: 12.5, color: "var(--muted)" }}
+              >
+                {tokens.in.toLocaleString()} tokens in -{" "}
+                {tokens.out.toLocaleString()} tokens out
+              </div>
+            )}
           </Surface>
 
           <Surface title="Signals" style={{ marginTop: 16 }} delay={180}>
