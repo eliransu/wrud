@@ -5,16 +5,9 @@ import { WarningOutlined } from "@ant-design/icons";
 import { estimateCostUsd, formatApproxUsd } from "@wrud/shared/pricing";
 import { api } from "../api";
 import { useApi } from "../hooks";
-import { PageHeader, Pill, StatTile, Surface } from "../ui";
+import { PageHeader, StatTile, StatusTag, Surface } from "../ui";
 import { JsonTree, parseMaybe } from "../JsonTree";
 import { extractSkills } from "../skills";
-
-const STATUS_TONE: Record<string, string> = {
-  open: "cyan",
-  summarizing: "amber",
-  summarized: "green",
-  abandoned: "red",
-};
 
 // Per-event-type presentation for the event log.
 const TYPE_META: Record<string, { label: string; color: string }> = {
@@ -146,16 +139,19 @@ export default function SessionDetail() {
 
   const { session, summary } = data;
   const cost = summary ? estimateCostUsd(summary.stats.models) : null;
+  const tokens = (summary?.stats.models ?? []).reduce(
+    (acc: { in: number; out: number }, m: any) => ({
+      in: acc.in + (m.inputTokens ?? 0),
+      out: acc.out + (m.outputTokens ?? 0),
+    }),
+    { in: 0, out: 0 },
+  );
   return (
     <>
       <PageHeader
         eyebrow="Session"
         title={`${id.slice(0, 8)}...`}
-        extra={
-          <Pill tone={STATUS_TONE[session.status] ?? "muted"}>
-            {session.status}
-          </Pill>
-        }
+        extra={<StatusTag status={session.status} />}
       />
 
       <Surface title="Context">
@@ -231,7 +227,7 @@ export default function SessionDetail() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: `repeat(${cost != null ? 5 : 4}, 1fr)`,
+              gridTemplateColumns: `repeat(${cost != null ? 7 : 6}, 1fr)`,
               gap: 16,
               marginTop: 16,
             }}
@@ -252,13 +248,15 @@ export default function SessionDetail() {
               value={Object.keys(summary.stats.toolCalls).length}
               delay={180}
             />
+            <StatTile label="Tokens in" value={tokens.in} delay={240} />
+            <StatTile label="Tokens out" value={tokens.out} delay={300} />
             {cost != null && (
               // useCountUp animates integers - feed cents, format back to ~$.
               <StatTile
                 label="~$ cost"
                 value={Math.round(cost * 100)}
                 format={(n) => formatApproxUsd(n / 100)}
-                delay={240}
+                delay={360}
               />
             )}
           </div>

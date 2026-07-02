@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Tag } from "antd";
 
 /** Eased count-up for telemetry numbers. */
 export function useCountUp(target: number, ms = 900): number {
@@ -123,6 +124,18 @@ const SIGNALS: Record<string, string> = {
   red: "var(--red)",
   muted: "var(--muted)",
 };
+
+const STATUS_COLOR: Record<string, string> = {
+  open: "cyan",
+  summarizing: "gold",
+  summarized: "green",
+  abandoned: "red",
+};
+
+/** Session status as a plain antd Tag (no LED dot). */
+export function StatusTag({ status }: { status: string }) {
+  return <Tag color={STATUS_COLOR[status] ?? "default"}>{status}</Tag>;
+}
 
 export function Pill({
   tone = "muted",

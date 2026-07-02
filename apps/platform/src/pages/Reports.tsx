@@ -16,20 +16,13 @@ import { api } from "../api";
 import { useApi } from "../hooks";
 import { useThemeMode } from "../theme-mode";
 import { chartPalette } from "../theme";
-import { PageHeader, StatTile, Surface, Pill } from "../ui";
+import { PageHeader, StatTile, StatusTag, Surface } from "../ui";
 import {
   FacetFilterBar,
   filterToParams,
   paramsToFilter,
   type FilterState,
 } from "../FacetFilterBar";
-
-const STATUS_TONE: Record<string, string> = {
-  open: "cyan",
-  summarizing: "amber",
-  summarized: "green",
-  abandoned: "red",
-};
 
 type Palette = ReturnType<typeof chartPalette>;
 type FacetCount = { value: string; sessions: number };
@@ -308,9 +301,7 @@ export default function Reports() {
                 {
                   title: "Status",
                   dataIndex: "status",
-                  render: (s: string) => (
-                    <Pill tone={STATUS_TONE[s] ?? "muted"}>{s}</Pill>
-                  ),
+                  render: (s: string) => <StatusTag status={s} />,
                 },
               ]}
             />

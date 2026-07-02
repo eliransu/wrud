@@ -3,19 +3,12 @@ import { Table, Tooltip, message } from "antd";
 import { useNavigate } from "react-router-dom";
 import { formatApproxUsd } from "@wrud/shared/pricing";
 import { api } from "../api";
-import { PageHeader, Pill, Surface } from "../ui";
+import { PageHeader, StatusTag, Surface } from "../ui";
 import {
   FacetFilterBar,
   filterToParams,
   type FilterState,
 } from "../FacetFilterBar";
-
-const STATUS_TONE: Record<string, string> = {
-  open: "cyan",
-  summarizing: "amber",
-  summarized: "green",
-  abandoned: "red",
-};
 
 /** Small model chip - theme-aware (rgb(var(--ov)) works on both light + dark). */
 const chip: CSSProperties = {
@@ -226,11 +219,11 @@ export default function Sessions() {
                 r.narrative ? (
                   <Tooltip title={r.narrative} placement="left">
                     <span style={{ cursor: "help" }}>
-                      <Pill tone={STATUS_TONE[s] ?? "muted"}>{s}</Pill>
+                      <StatusTag status={s} />
                     </span>
                   </Tooltip>
                 ) : (
-                  <Pill tone={STATUS_TONE[s] ?? "muted"}>{s}</Pill>
+                  <StatusTag status={s} />
                 ),
             },
             {
