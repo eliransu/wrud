@@ -15,6 +15,8 @@
 ![local-first](https://img.shields.io/badge/local--first-no%20cloud%20required-ffb454.svg)
 [![CI](https://github.com/eliransu/wrud/actions/workflows/ci.yml/badge.svg)](https://github.com/eliransu/wrud/actions/workflows/ci.yml)
 
+<a href="https://www.producthunt.com/products/wrud?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-wrud" target="_blank" rel="noopener noreferrer"><img alt="WRUD - See what your AI agents did - and where they overpaid | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1186413&amp;theme=light&amp;t=1783076840377"></a>
+
 </div>
 
 ---
