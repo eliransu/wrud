@@ -158,16 +158,21 @@ Open `http://localhost:11190` and paste your token on the Connect screen.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/assets/sessions.png" alt="Sessions list with filters" /><br/><sub><b>Sessions</b> - filter by user, agent, model, date; per-session tokens and model breakdown.</sub></td>
+<td width="50%"><img src="docs/assets/sessions.png" alt="Sessions list with filters" /><br/><sub><b>Sessions</b> - filter by user, agent, project, model, date; per-session tokens and ~$ cost.</sub></td>
 <td width="50%"><img src="docs/assets/lessons.png" alt="Lessons view" /><br/><sub><b>Lessons</b> - memory-teaching guidance from recurring patterns (e.g. model right-sizing).</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/assets/session-detail.png" alt="Session detail with narrative, skills used, and per-model cost" /><br/><sub><b>Session detail</b> - narrative recap, skills &amp; MCP tools used, per-model tokens and cost.</sub></td>
+<td width="50%"><img src="docs/assets/reports.png" alt="Reports with facet filters, sessions over time, top models and projects" /><br/><sub><b>Reports</b> - slice by user, agent, project, model, skill; sessions over time and top-N breakdowns.</sub></td>
 </tr>
 </table>
 
 | Section        | What it shows                                                                                                         |
 | -------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Overview       | Rollup across all sessions: session counts, per-model token usage, insight and lesson totals.                         |
-| Sessions       | Table with per-session input/output tokens and model breakdown. Click in for the full detail view.                    |
+| Overview       | Rollup across all sessions: counts, ~$ cost, model usage, top projects, categories, agents.                           |
+| Sessions       | Table with per-session input/output tokens, ~$ cost and model breakdown. Click in for the full detail view.           |
 | Session detail | Narrative recap, per-model token usage (and cost signals for right-sizing), skills and commands used, full event log. |
+| Reports        | Facet-driven aggregates: sessions over time, top models / projects / topics / skills / tools / users.                 |
 | Lessons        | Memory-teaching guidance derived from recurring patterns across sessions.                                             |
 | API Keys       | Create keys (secret shown once), list, revoke. Scopes: `ingest`, `read`, `admin`.                                     |
 
