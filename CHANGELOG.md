@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.0] - 2026-07-05
+
+### Added
+
+- **`wrud menubar`** - installs + launches a native macOS menu bar app
+  (`/Applications/Wrud.app`). Record icon shows server state; menu opens the
+  keyed dashboard, starts/stops the server, shows today's sessions / tokens /
+  estimated cost, and offers Launch at Login. The universal (arm64 + x86_64,
+  ad-hoc-signed) .app ships prebuilt inside the npm tarball (~320 kB) - no
+  Xcode, no Electron. Source: `apps/menubar/` (one Swift file);
+  `wrud-menubar --check` is a headless health + stats smoke test.
+
+---
+
 ## [0.7.7] - 2026-07-02
 
 ### Changed

@@ -13,6 +13,7 @@ import { runDoctor } from "./doctor.js";
 import { runInstallHooks } from "./install-hooks.js";
 import { runHook } from "./hooks.js";
 import { runCleanup } from "./cleanup.js";
+import { runMenubar } from "./menubar.js";
 import { runStop } from "./stop.js";
 import { providerIds } from "./providers.js";
 
@@ -28,6 +29,8 @@ Usage:
   wrud install-hooks [--agent <${providerIds.join("|")}>] [--user|--project]
                                     wire your installed agents (auto-detected; --agent picks one)
   wrud stop                         stop the running wrud server (on WRUD_PORT)
+  wrud menubar                      install + launch the macOS menu bar app (start/stop,
+                                    dashboard, today's usage in your menu bar)
   wrud cleanup [--dry-run] [--yes]  remove everything wrud installed (data, tokens, hooks); undo install
   wrud hook <record|flush|finalize> [--provider <id>]   (invoked by the agent's hook config)
 
@@ -56,6 +59,9 @@ switch (cmd) {
     break;
   case "stop":
     process.exit(await runStop());
+    break;
+  case "menubar":
+    process.exit(runMenubar(CLI_PATH));
     break;
   case "cleanup":
   case "uninstall":

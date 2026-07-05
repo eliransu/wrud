@@ -23,6 +23,14 @@ npx @wrud/cli doctor
 
 Restart your agent afterwards so it picks up the new hooks. (Target one agent with `--agent claude-code` / `--agent cursor`.)
 
+## Menu bar app (macOS)
+
+```bash
+npx @wrud/cli menubar
+```
+
+Installs a tiny native menu bar app (no Electron — the prebuilt universal .app ships inside this package) and launches it: a record icon that shows whether the server is running, opens the dashboard, starts/stops the server, and shows today's sessions / tokens / estimated cost. Click **Launch at Login** in its menu to keep it across reboots.
+
 ## Commands
 
 | Command                                                                | What it does                                                                                                                                                                                                                             |
@@ -30,6 +38,7 @@ Restart your agent afterwards so it picks up the new hooks. (Target one agent wi
 | `wrud`                                                                 | Start the server + dashboard (one origin). Attaches if already running.                                                                                                                                                                  |
 | `wrud install-hooks [--agent claude-code\|cursor] [--user\|--project]` | Wire your hooks + mint a least-privilege ingest key + self-verify. No `--agent` **auto-detects and wires every installed agent**; `--agent <id>` targets one.                                                                            |
 | `wrud doctor`                                                          | Prove the capture path works end-to-end (PASS/FAIL + HTTP status).                                                                                                                                                                       |
+| `wrud menubar`                                                         | macOS: install + launch the native menu bar app (server start/stop, dashboard, today's usage).                                                                                                                                           |
 | `wrud cleanup` (alias `uninstall`)                                     | Remove everything wrud installed — `~/.wrud` (db, tokens, log), temp session buffers, and wrud's hook entries in every agent's settings (user + project). Edits shared config surgically; `--dry-run` previews; confirms unless `--yes`. |
 
 ## Environment

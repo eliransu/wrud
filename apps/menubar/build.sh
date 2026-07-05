@@ -25,9 +25,13 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
 </plist>
 EOF
 
-# ponytail: host arch only; add `-target x86_64-apple-macos13.0` + lipo if you ever ship universal
-swiftc -O wrud-menubar.swift -o "$APP/Contents/MacOS/wrud-menubar" \
-  -target "$(uname -m)-apple-macos13.0"
+# universal binary - the .app ships inside the @wrud/cli npm tarball, so both Mac arches
+for arch in arm64 x86_64; do
+  swiftc -O wrud-menubar.swift -o "dist/wrud-menubar-$arch" -target "$arch-apple-macos13.0"
+done
+lipo -create dist/wrud-menubar-arm64 dist/wrud-menubar-x86_64 \
+  -output "$APP/Contents/MacOS/wrud-menubar"
+rm dist/wrud-menubar-arm64 dist/wrud-menubar-x86_64
 codesign --force --sign - "$APP"
 
 echo "built $APP"

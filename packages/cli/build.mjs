@@ -36,4 +36,22 @@ await build({
   logLevel: "info",
 });
 
+// Bundle the macOS menu bar app so `wrud menubar` works straight from the npm tarball.
+// Best-effort: a non-Mac (or swiftc-less) build still produces a valid package without it.
+if (process.platform === "darwin") {
+  console.log("- building menu bar app...");
+  try {
+    execSync(join(ROOT, "apps", "menubar", "build.sh"), { stdio: "inherit" });
+    cpSync(
+      join(ROOT, "apps", "menubar", "dist", "Wrud.app"),
+      join(DIST, "app", "Wrud.app"),
+      { recursive: true },
+    );
+  } catch {
+    console.warn("! skipped menu bar app (swiftc missing?) - `wrud menubar` won't be bundled");
+  }
+} else {
+  console.warn("! non-macOS build - menu bar app not bundled");
+}
+
 console.log("ok built packages/cli/dist (cli.mjs + web/)");
