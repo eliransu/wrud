@@ -4,16 +4,52 @@
  * /Applications + `open`. The app itself is a native shell over this CLI: start/stop the
  * server, open the dashboard, today's usage. Source: apps/menubar in the repo.
  */
-import { spawn } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { execSync, spawn } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+
+/**
+ * Record this node's bin dir in ~/.wrud/node-dir. Finder-launched apps get a bare PATH and
+ * `zsh -lc` skips .zshrc (where nvm lives), so the menu bar app prepends this dir to find
+ * node/npx/wrud when starting the server - the exact node that installed it.
+ */
+function writeNodeDir(): void {
+  try {
+    const home = join(homedir(), ".wrud");
+    mkdirSync(home, { recursive: true });
+    writeFileSync(join(home, "node-dir"), dirname(process.execPath) + "\n");
+  } catch {
+    /* best-effort */
+  }
+}
+
+/**
+ * Plain `wrud` runs call this: put the W in the menu bar without being asked.
+ * Silent no-op unless it actually has something to do - not macOS, `--no-menubar`,
+ * the detached daemon child, the app already up, or a tarball built without the .app.
+ */
+export function autoMenubar(cliPath: string): void {
+  if (process.platform !== "darwin") return;
+  if (process.env.WRUD_DETACHED) return;
+  if (process.argv.includes("--no-menubar")) return;
+  if (!existsSync(join(dirname(cliPath), "app", "Wrud.app"))) return;
+  writeNodeDir(); // refresh even when the app is already up (node may have moved)
+  try {
+    execSync("pgrep -x wrud-menubar", { stdio: "ignore" });
+    return; // already in the menu bar
+  } catch {
+    /* not running - install + launch */
+  }
+  runMenubar(cliPath);
+}
 
 export function runMenubar(cliPath: string): number {
   if (process.platform !== "darwin") {
     console.error("wrud menubar: the menu bar app is macOS-only.");
     return 1;
   }
+  writeNodeDir();
   const src = join(dirname(cliPath), "app", "Wrud.app");
   if (!existsSync(src)) {
     console.error(

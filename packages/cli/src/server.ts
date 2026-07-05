@@ -28,6 +28,7 @@ import {
   http,
 } from "./env.js";
 import { autoInstallHooks } from "./install-hooks.js";
+import { autoMenubar } from "./menubar.js";
 
 /** Dashboard URL pre-loaded with the token so the browser connects automatically;
  * the dashboard strips ?key=... from the address bar once it's adopted it. */
@@ -66,6 +67,7 @@ async function startDetached(cliPath: string): Promise<void> {
           `  stop : wrud stop`,
         ].join("\n"),
       );
+      autoMenubar(cliPath);
       return;
     }
     await new Promise((r) => setTimeout(r, 250));
@@ -150,6 +152,7 @@ export async function runServer(cliPath: string): Promise<void> {
     openBrowser(keyedUrl(PORT, token));
     banner(PORT, token, true, true);
     if (!skipHooks()) await autoInstallHooks(cliPath);
+    autoMenubar(cliPath);
     return;
   }
 
@@ -193,6 +196,7 @@ export async function runServer(cliPath: string): Promise<void> {
       openBrowser(keyedUrl(info.port, token));
       banner(info.port, token, true, false);
       if (!skipHooks()) void autoInstallHooks(cliPath);
+      autoMenubar(cliPath);
     });
     server.on("error", (err: NodeJS.ErrnoException) => {
       if (err.code === "EADDRINUSE" && attempt < MAX_PORT_TRIES) {

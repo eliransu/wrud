@@ -22,8 +22,10 @@ const CLI_PATH = fileURLToPath(import.meta.url); // dist/cli.mjs after bundling
 const USAGE = `wrud - local-first recorder for AI-agent sessions
 
 Usage:
-  wrud [-d] [--no-install-hooks]    start the server + dashboard (one origin); auto-wires
-                                    your installed agents unless --no-install-hooks
+  wrud [-d] [--no-install-hooks] [--no-menubar]
+                                    start the server + dashboard (one origin); auto-wires
+                                    your installed agents unless --no-install-hooks; on macOS
+                                    also puts the W in your menu bar unless --no-menubar
                                     -d / --detach runs it in the background (logs: ~/.wrud/server.log)
   wrud doctor                       verify capture works end-to-end
   wrud install-hooks [--agent <${providerIds.join("|")}>] [--user|--project]
@@ -49,6 +51,7 @@ switch (cmd) {
   case "-d":
   case "--detach":
   case "--no-install-hooks":
+  case "--no-menubar":
     await runServer(CLI_PATH);
     break;
   case "doctor":

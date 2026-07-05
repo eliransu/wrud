@@ -12,7 +12,7 @@ Works with **Claude Code** and **Cursor** via their own lifecycle hooks.
 npx @wrud/cli
 ```
 
-Starts the API + dashboard on one origin (default `http://localhost:11190`), seeds a local API key, opens your browser, and prints a token to paste on the **Connect** screen.
+Starts the API + dashboard on one origin (default `http://localhost:11190`), seeds a local API key, opens your browser, and prints a token to paste on the **Connect** screen. On macOS it also puts a **W** in your menu bar (skip with `--no-menubar`).
 
 Then wire your agent and verify capture end-to-end:
 

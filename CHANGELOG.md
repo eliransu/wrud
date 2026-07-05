@@ -11,7 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.8.1] - 2026-07-05
+## [0.9.0] - 2026-07-05
+
+### Added
+
+- **Menu bar auto-install** - plain `wrud` / `npx @wrud/cli` now also puts
+  the W in your macOS menu bar (skipped if already running; opt out with
+  `--no-menubar`). `wrud menubar` stays for installing it alone.
+
+### Fixed
+
+- **"Start Server" from the menu bar failed on nvm setups** - Finder-launched
+  apps get a bare PATH and `zsh -lc` skips `.zshrc` (where nvm initializes),
+  so the app found no node/npx and failed _silently_. The CLI now records its
+  node bin dir in `~/.wrud/node-dir` at install; the app prepends it (plus
+  homebrew paths) when starting the server, shows "Starting…" progress, and a
+  persistent "Start failed - run: npx @wrud/cli" instead of silence.
 
 ### Changed
 

@@ -15,8 +15,8 @@ import ServiceManagement
 
 let PORT = ProcessInfo.processInfo.environment["WRUD_PORT"].flatMap(Int.init) ?? 11190
 let BASE = "http://localhost:\(PORT)"
-let TOKEN_FILE = FileManager.default.homeDirectoryForCurrentUser
-  .appendingPathComponent(".wrud/token")
+let WRUD_HOME = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".wrud")
+let TOKEN_FILE = WRUD_HOME.appendingPathComponent("token")
 
 func token() -> String? {
   guard let t = try? String(contentsOf: TOKEN_FILE, encoding: .utf8) else { return nil }
@@ -78,12 +78,20 @@ func fmtTokens(_ n: Int) -> String {
   return "\(n)"
 }
 
-/** Run a line through a login shell so PATH has nvm/homebrew node (Finder-launched apps don't). */
+/** Run a line through a login shell. Finder-launched apps get a bare PATH and `zsh -lc`
+ * skips .zshrc (where nvm lives), so prepend the node bin dir the CLI recorded at install
+ * (~/.wrud/node-dir) plus the usual homebrew spots - that's where node/npx/wrud live. */
 @discardableResult
 func shell(_ line: String) -> Process {
   let p = Process()
   p.executableURL = URL(fileURLWithPath: "/bin/zsh")
   p.arguments = ["-lc", line]
+  var env = ProcessInfo.processInfo.environment
+  let nodeDir = ((try? String(contentsOf: WRUD_HOME.appendingPathComponent("node-dir"), encoding: .utf8)) ?? "")
+    .trimmingCharacters(in: .whitespacesAndNewlines)
+  env["PATH"] = [nodeDir, "/opt/homebrew/bin", "/usr/local/bin", env["PATH"] ?? "/usr/bin:/bin"]
+    .filter { !$0.isEmpty }.joined(separator: ":")
+  p.environment = env
   p.standardOutput = FileHandle.nullDevice
   p.standardError = FileHandle.nullDevice
   try? p.run()
@@ -127,6 +135,8 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
   let loginItem = NSMenuItem(title: "Launch at Login", action: #selector(toggleLogin), keyEquivalent: "")
 
   var running = false
+  var starting = false // Start clicked, server not up yet
+  var startFailed = false // last Start attempt timed out; cleared on next attempt/success
 
   func applicationDidFinishLaunching(_ n: Notification) {
     statusItem.button?.toolTip = "wrud"
@@ -186,8 +196,14 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
     get("/health", timeout: 2) { data in
       DispatchQueue.main.async {
         self.running = data != nil
+        if self.running { self.starting = false; self.startFailed = false }
         self.setIcon()
-        self.statusLine.title = self.running ? "Running on localhost:\(PORT)" : "Stopped"
+        self.statusLine.title =
+          self.running
+          ? "Running on localhost:\(PORT)"
+          : self.starting
+            ? "Starting…"
+            : self.startFailed ? "Start failed - run: npx @wrud/cli" : "Stopped"
         self.openItem.isEnabled = self.running
         self.toggleItem.title = self.running ? "Stop Server" : "Start Server"
         if !self.running {
@@ -224,9 +240,20 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { self.refresh() }
     } else {
       // WRUD_CLI lets a dev point at a local build; everyone else gets wrud-on-PATH or npx
+      starting = true
+      startFailed = false
+      statusLine.title = "Starting…"
       shell("\"${WRUD_CLI:-wrud}\" -d 2>/dev/null || npx -y @wrud/cli -d")
-      for delay in [1.0, 2.5, 5.0, 10.0, 20.0] {
+      for delay in [1.0, 2.5, 5.0, 10.0, 20.0, 40.0] {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { self.refresh() }
+      }
+      // don't fail silently: a cold npx download can take a while, but past that, say so
+      DispatchQueue.main.asyncAfter(deadline: .now() + 42) {
+        if !self.running {
+          self.starting = false
+          self.startFailed = true
+          self.refresh()
+        }
       }
     }
   }
