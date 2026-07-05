@@ -29,7 +29,7 @@ Restart your agent afterwards so it picks up the new hooks. (Target one agent wi
 npx @wrud/cli menubar
 ```
 
-Installs a tiny native menu bar app (no Electron — the prebuilt universal .app ships inside this package) and launches it: a record icon that shows whether the server is running, opens the dashboard, starts/stops the server, and shows today's sessions / tokens / estimated cost. Click **Launch at Login** in its menu to keep it across reboots.
+Installs a tiny native menu bar app (no Electron — the prebuilt universal .app ships inside this package) and launches it: a **W** icon that shows whether the server is running (dimmed = stopped), opens the dashboard, starts/stops the server, and shows today's sessions / tokens / estimated cost. Click **Launch at Login** in its menu to keep it across reboots.
 
 ## Commands
 

@@ -159,12 +159,26 @@ final class App: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
   func menuWillOpen(_ menu: NSMenu) { refresh() }
 
+  /** Bold "W" drawn as a template image (matches the app icon); dimmed when stopped. */
+  static let wIcon: NSImage = {
+    let img = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { rect in
+      let str = NSAttributedString(
+        string: "W",
+        attributes: [
+          .font: NSFont.systemFont(ofSize: 13, weight: .black),
+          .foregroundColor: NSColor.black,
+        ])
+      let sz = str.size()
+      str.draw(at: NSPoint(x: (rect.width - sz.width) / 2, y: (rect.height - sz.height) / 2))
+      return true
+    }
+    img.isTemplate = true
+    return img
+  }()
+
   func setIcon() {
-    let img = NSImage(
-      systemSymbolName: running ? "record.circle.fill" : "record.circle",
-      accessibilityDescription: "wrud")
-    img?.isTemplate = true
-    statusItem.button?.image = img
+    statusItem.button?.image = App.wIcon
+    statusItem.button?.appearsDisabled = !running
   }
 
   /** Poll health, then today's stats; update the menu in place (NSMenu updates while open). */

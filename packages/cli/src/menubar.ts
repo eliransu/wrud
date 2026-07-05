@@ -34,7 +34,7 @@ export function runMenubar(cliPath: string): number {
       spawn("open", [dest], { stdio: "ignore", detached: true }).unref();
       console.log(
         [
-          `wrud menubar: installed ${dest} and launched it - look for the record icon in your menu bar.`,
+          `wrud menubar: installed ${dest} and launched it - look for the W icon in your menu bar.`,
           `  tip: click it -> "Launch at Login" to keep it across reboots.`,
         ].join("\n"),
       );

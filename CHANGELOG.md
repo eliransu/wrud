@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.1] - 2026-07-05
+
+### Changed
+
+- **Menu bar app branding** - proper app icon (dark-green rounded square +
+  lime "W", the dashboard palette; generated at build by
+  `apps/menubar/make-icon.swift` with sips/iconutil) and a bold "W" template
+  glyph in the menu bar (dimmed when the server is stopped) replacing the
+  generic record symbol.
+
+---
+
 ## [0.8.0] - 2026-07-05
 
 ### Added

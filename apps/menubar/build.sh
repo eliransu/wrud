@@ -17,6 +17,7 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
   <key>CFBundleName</key><string>wrud</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>LSUIElement</key><true/>
   <key>NSAppTransportSecurity</key>
@@ -24,6 +25,17 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
 </dict>
 </plist>
 EOF
+
+# app icon: rendered from make-icon.swift, scaled with sips, packed with iconutil (all built-in)
+ICONSET=dist/AppIcon.iconset
+rm -rf "$ICONSET" && mkdir -p "$ICONSET" "$APP/Contents/Resources"
+swift make-icon.swift dist/icon-1024.png >/dev/null
+for s in 16 32 128 256 512; do
+  sips -z "$s" "$s" dist/icon-1024.png --out "$ICONSET/icon_${s}x${s}.png" >/dev/null
+  sips -z "$((s * 2))" "$((s * 2))" dist/icon-1024.png --out "$ICONSET/icon_${s}x${s}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+rm -rf "$ICONSET" dist/icon-1024.png
 
 # universal binary - the .app ships inside the @wrud/cli npm tarball, so both Mac arches
 for arch in arm64 x86_64; do

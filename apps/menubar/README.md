@@ -11,7 +11,8 @@ npx @wrud/cli menubar
 The prebuilt universal .app ships inside the npm package; that command copies it to
 `/Applications` and launches it. Building from source (below) is only for development.
 
-- **record icon** in the menu bar: filled = server running, outline = stopped
+- **W icon** in the menu bar: bright = server running, dimmed = stopped
+  (app icon: dark-green rounded square + lime W, rendered by `make-icon.swift` at build)
 - **Open Dashboard** — opens the keyed dashboard URL in your browser
 - **Today** — sessions, tokens in/out, and estimated cost for today
 - **Start / Stop Server** — start runs `wrud -d` (falls back to `npx -y @wrud/cli -d`;
