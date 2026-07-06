@@ -430,6 +430,59 @@ h4 {
   margin-bottom: 10px;
 }
 
+/* ---- rendered markdown (skill/command source + run output) ---- */
+.wd-md {
+  line-height: 1.65;
+  font-size: 13.5px;
+  max-height: 45vh;
+  overflow: auto;
+}
+.wd-md h1,
+.wd-md h2,
+.wd-md h3 {
+  font-size: 1.05em;
+  margin: 1em 0 0.4em;
+}
+.wd-md pre,
+.wd-md code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: rgb(var(--ov) / 0.05);
+  border-radius: 6px;
+}
+.wd-md pre {
+  padding: 10px 12px;
+  overflow: auto;
+}
+.wd-md code {
+  padding: 1px 5px;
+}
+.wd-md table {
+  border-collapse: collapse;
+}
+.wd-md th,
+.wd-md td {
+  border: 1px solid rgb(var(--ov) / 0.12);
+  padding: 4px 10px;
+}
+.wd-skill-meta {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--muted);
+  background: rgb(var(--ov) / 0.03);
+  border: 1px solid rgb(var(--ov) / 0.08);
+  border-radius: 8px;
+  padding: 10px 12px;
+  white-space: pre-wrap;
+}
+.wd-skill-output {
+  border: 1px solid rgb(var(--ov) / 0.08);
+  border-left: 3px solid var(--signal);
+  border-radius: 8px;
+  padding: 10px 14px;
+  max-height: 35vh;
+}
+
 /* ---- scrollbar ---- */
 *::-webkit-scrollbar {
   width: 10px;

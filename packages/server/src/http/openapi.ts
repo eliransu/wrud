@@ -242,6 +242,27 @@ export function buildOpenApiDoc() {
           },
         },
       },
+      "/v1/skills/{name}": {
+        get: {
+          summary:
+            "Resolve a captured skill/command name to its local source file (scope: read)",
+          responses: {
+            "200": {
+              description: "{ name, kind: skill|command, path, content }",
+            },
+            "404": { description: "no local file found for this name" },
+          },
+        },
+      },
+      "/v1/skills/{name}/run": {
+        post: {
+          summary:
+            "Execute a skill/command on this machine via `claude -p` (scope: admin). Body: { args?: string }.",
+          responses: {
+            "200": { description: "{ ok, exitCode, output }" },
+          },
+        },
+      },
       "/v1/reports/summary": {
         get: {
           summary:

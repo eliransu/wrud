@@ -8,6 +8,7 @@ import { useApi } from "../hooks";
 import { PageHeader, StatTile, StatusTag, Surface } from "../ui";
 import { JsonTree, parseMaybe } from "../JsonTree";
 import { extractSkills } from "../skills";
+import SkillModal from "../SkillModal";
 
 // Per-event-type presentation for the event log.
 const TYPE_META: Record<string, { label: string; color: string }> = {
@@ -117,6 +118,7 @@ export default function SessionDetail() {
   const { id = "" } = useParams();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
+  const [openSkill, setOpenSkill] = useState<string | null>(null);
   const { data, loading } = useApi(() => api.getSession(id), [id]);
   // Event log pages server-side, newest first.
   const { data: events } = useApi(
@@ -180,10 +182,13 @@ export default function SessionDetail() {
       {(() => {
         const { skills, extensions } = extractSkills(skillEvents?.items);
         if (skills.length === 0 && extensions.length === 0) return null;
-        const chip = (label: string, color: string) => (
-          <span
+        // skills are clickable (detail modal); MCP extensions have no local source file
+        const chip = (label: string, color: string, onClick?: () => void) => (
+          <button
             key={label}
             className="wd-mono"
+            onClick={onClick}
+            disabled={!onClick}
             style={{
               fontSize: 12,
               padding: "3px 10px",
@@ -191,10 +196,13 @@ export default function SessionDetail() {
               border: `1px solid ${color}55`,
               background: `${color}14`,
               color,
+              cursor: onClick ? "pointer" : "default",
+              font: "inherit",
             }}
+            title={onClick ? "View source & run" : undefined}
           >
             {label}
-          </span>
+          </button>
         );
         return (
           <Surface
@@ -203,12 +211,16 @@ export default function SessionDetail() {
             delay={40}
           >
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {skills.map((s) => chip(s, "#b6f24e"))}
+              {skills.map((s) => chip(s, "#b6f24e", () => setOpenSkill(s)))}
               {extensions.map((e) => chip(e, "#9b8cff"))}
             </div>
           </Surface>
         );
       })()}
+
+      {openSkill && (
+        <SkillModal name={openSkill} onClose={() => setOpenSkill(null)} />
+      )}
 
       {summary ? (
         <>

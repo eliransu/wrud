@@ -73,4 +73,15 @@ export const api = {
   revokeKey: (id: string) =>
     req(`/v1/keys/${id}`, { method: "DELETE", headers: headers() }),
   listLessons: () => req("/v1/lessons", { headers: headers() }),
+  // skill names may carry a leading slash (/review) - strip it so it stays one path segment
+  getSkill: (name: string) =>
+    req(`/v1/skills/${encodeURIComponent(name.replace(/^\//, ""))}`, {
+      headers: headers(),
+    }),
+  runSkill: (name: string, args: string) =>
+    req(`/v1/skills/${encodeURIComponent(name.replace(/^\//, ""))}/run`, {
+      method: "POST",
+      headers: headers({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ args }),
+    }),
 };
