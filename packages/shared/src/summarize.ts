@@ -187,9 +187,72 @@ export class ErrorRateAnalyzer implements InsightAnalyzer {
     ];
   }
 }
+export interface ContextOverheadThresholds {
+  /** Per-call input baseline that suggests a heavy standing environment. */
+  minAvgInputPerCall: number;
+  /** Input:output ratio guard so big-output sessions never flag. */
+  minInOutRatio: number;
+}
+
+/**
+ * Flags the "39k in / 200 out" pattern: every model call re-sends the standing session
+ * environment (system prompt, memory files, skill lists, MCP tool schemas, hook output),
+ * so input dwarfs output even for trivial prompts. Cache-aware: the detail notes how much
+ * input was served from prompt cache (billed at 0.1x) - cost is dampened, but the context
+ * window still pays full size on every call.
+ */
+export class ContextOverheadAnalyzer implements InsightAnalyzer {
+  constructor(
+    private t: ContextOverheadThresholds = {
+      minAvgInputPerCall: 20_000,
+      minInOutRatio: 25,
+    },
+  ) {}
+  analyze(summary: SessionSummary, _events: Event[]): Insight[] {
+    const out: Insight[] = [];
+    for (const m of summary.stats.models) {
+      if (m.calls <= 0 || m.outputTokens <= 0) continue;
+      // ponytail: aggregate proxy - per-first-call usage would cleanly separate standing
+      // environment from accumulated history, but model rows only carry rolled-up totals.
+      const avgIn = m.inputTokens / m.calls;
+      const ratio = m.inputTokens / m.outputTokens;
+      if (avgIn < this.t.minAvgInputPerCall || ratio < this.t.minInOutRatio)
+        continue;
+      const read = m.cacheReadTokens ?? 0;
+      const cachedPct =
+        m.inputTokens > 0 ? Math.round((read / m.inputTokens) * 100) : 0;
+      out.push({
+        type: "context_overhead",
+        severity: "info",
+        title: "Standing context dominates input tokens",
+        detail:
+          `${m.model} averaged ~${Math.round(avgIn).toLocaleString("en-US")} input tokens per call ` +
+          `for ${m.outputTokens.toLocaleString("en-US")} output tokens total (${Math.round(ratio)}:1). ` +
+          `Most of that input is the standing session environment - system prompt, memory files, ` +
+          `skill lists, MCP tool schemas, hook output - re-sent with every call.` +
+          (read > 0
+            ? ` ${cachedPct}% of it was served from prompt cache (0.1x rate), so cost is dampened - but the context window still pays full size.`
+            : ""),
+        evidence: {
+          model: m.model,
+          calls: m.calls,
+          inputTokens: m.inputTokens,
+          outputTokens: m.outputTokens,
+          avgInputPerCall: Math.round(avgIn),
+          inOutRatio: Math.round(ratio),
+          cacheReadTokens: read,
+          cachedInputPct: cachedPct,
+        },
+      });
+    }
+    return out;
+  }
+}
+
 export const defaultAnalyzers = (): InsightAnalyzer[] => [
   new ModelRightsizingAnalyzer(),
   new ErrorRateAnalyzer(),
+  new ContextOverheadAnalyzer(),
 ];
 
 /* ---------- base summary (stats + insights; narrative comes only from the LLM narrator) ---------- */

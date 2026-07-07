@@ -3,5 +3,6 @@ export {
   ModelRightsizingAnalyzer,
   modelTier,
   ErrorRateAnalyzer,
+  ContextOverheadAnalyzer,
   defaultAnalyzers,
 } from "@wrud/shared";

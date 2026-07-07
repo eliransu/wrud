@@ -33,6 +33,27 @@ export function lessonsFromInsights(
         });
         break;
       }
+      case "context_overhead": {
+        const avg = i.evidence.avgInputPerCall;
+        const pct = i.evidence.cachedInputPct;
+        out.push({
+          sessionId,
+          scope: "user",
+          guidance:
+            `Input tokens dwarf output${
+              typeof avg === "number"
+                ? ` (~${avg.toLocaleString("en-US")} per call)`
+                : ""
+            } because the standing environment - system prompt, memory files, skill lists, ` +
+            `MCP tool schemas, hooks - rides along on every model call. Disconnect unused MCP ` +
+            `servers and plugins to shrink the baseline` +
+            (typeof pct === "number" && pct > 0
+              ? `; prompt cache covered ${pct}% of it, which softens cost but not context-window pressure.`
+              : "."),
+          source: "context_overhead",
+        });
+        break;
+      }
       case "high_error_rate":
         out.push({
           sessionId,

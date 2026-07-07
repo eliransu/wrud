@@ -36,6 +36,23 @@ describe("lessonsFromInsights", () => {
     expect(out[0]!.scope).toBe("session");
     expect(out[0]!.guidance).toContain("5");
   });
+  it("maps a context_overhead insight to a user-scoped lesson", () => {
+    const out = lessonsFromInsights(
+      [
+        insight({
+          type: "context_overhead",
+          evidence: { avgInputPerCall: 39382, cachedInputPct: 90 },
+        }),
+      ],
+      "s1",
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]!.scope).toBe("user");
+    expect(out[0]!.source).toBe("context_overhead");
+    expect(out[0]!.guidance).toContain("39,382");
+    expect(out[0]!.guidance).toContain("MCP");
+    expect(out[0]!.guidance).toContain("90%");
+  });
   it("ignores insight types it has no lesson for", () => {
     expect(
       lessonsFromInsights([insight({ type: "something_else" })], "s1"),
