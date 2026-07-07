@@ -29,6 +29,7 @@ import type {
   Lesson,
   SessionFilter,
   SessionStats,
+  ModelUsage,
   LessonFilter,
   Paginated,
   Page,
@@ -303,6 +304,36 @@ export class SqliteStorageAdapter implements StorageAdapter {
       )
       .all(...ids) as any[])
       out[r.session_id]?.models.push(r.value);
+    return out;
+  }
+
+  async modelUsage(ids: string[]): Promise<Record<string, ModelUsage[]>> {
+    const out: Record<string, ModelUsage[]> = {};
+    if (!ids.length) return out;
+    const ph = ids.map(() => "?").join(",");
+    for (const r of this.db
+      .prepare(
+        `SELECT session_id sid,
+                json_extract(payload_json, '$.model') model,
+                SUM(COALESCE(json_extract(payload_json, '$.calls'), 1)) calls,
+                SUM(COALESCE(json_extract(payload_json, '$.inputTokens'), 0)) input,
+                SUM(COALESCE(json_extract(payload_json, '$.outputTokens'), 0)) output,
+                SUM(COALESCE(json_extract(payload_json, '$.cacheReadTokens'), 0)) cache_read,
+                SUM(COALESCE(json_extract(payload_json, '$.cacheCreationTokens'), 0)) cache_creation
+         FROM events WHERE type = 'model_use' AND session_id IN (${ph})
+         GROUP BY session_id, model`,
+      )
+      .all(...ids) as any[]) {
+      if (!r.model) continue;
+      (out[r.sid] ??= []).push({
+        model: r.model,
+        calls: r.calls,
+        inputTokens: r.input,
+        outputTokens: r.output,
+        cacheReadTokens: r.cache_read,
+        cacheCreationTokens: r.cache_creation,
+      });
+    }
     return out;
   }
 

@@ -81,6 +81,44 @@ describe("session routes", () => {
     expect(reqBody.session.apiKeyId).toBeUndefined(); // internal id not exposed
   });
 
+  it("estimates cost on the fly for a live multi-model session (no summary yet)", async () => {
+    const created = await app.request("/v1/sessions", {
+      method: "POST",
+      headers: h,
+      body: JSON.stringify({ user: { id: "u1" }, agent: { name: "cc" } }),
+    });
+    const { sessionId } = (await created.json()) as any;
+    const use = (
+      seq: number,
+      model: string,
+      input: number,
+      output: number,
+    ) => ({
+      id: `m${seq}`,
+      sessionId,
+      seq,
+      timestamp: `2026-06-25T10:00:0${seq}.000Z`,
+      type: "model_use",
+      payload: { model, inputTokens: input, outputTokens: output },
+    });
+    await app.request(`/v1/sessions/${sessionId}/events`, {
+      method: "POST",
+      headers: h,
+      body: JSON.stringify({
+        events: [
+          use(0, "claude-fable-5", 100_000, 10_000), // $1.00 + $0.50
+          use(1, "claude-haiku-4-5", 10_000, 1_000), // $0.01 + $0.005
+        ],
+      }),
+    });
+    const list = await app.request("/v1/sessions", { headers: h });
+    const row = ((await list.json()) as any).items.find(
+      (i: any) => i.id === sessionId,
+    );
+    expect(row.estCostUsd).toBeCloseTo(1.515, 5);
+    expect(row.tokens).toEqual({ input: 110_000, output: 11_000 });
+  });
+
   it("rejects a bad create body with 400", async () => {
     const res = await app.request("/v1/sessions", {
       method: "POST",

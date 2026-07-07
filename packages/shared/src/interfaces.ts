@@ -77,6 +77,17 @@ export interface SessionStats {
   outputTokens: number;
 }
 
+/** Per-model token usage aggregated from a session's model_use events (same shape as
+ * summary.stats.models) - lets cost be estimated on the fly for still-running sessions. */
+export interface ModelUsage {
+  model: string;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
+}
+
 export interface LessonFilter {
   scope?: "session" | "user" | "org";
   sessionId?: string;
@@ -90,6 +101,9 @@ export interface StorageAdapter {
   listSessions(f: SessionFilter): Promise<Paginated<Session>>;
   /** Event count + model/token rollup per session id (for the list view). */
   sessionStats(ids: string[]): Promise<Record<string, SessionStats>>;
+  /** Per-model usage from model_use events - for live cost estimates on sessions
+   * that have no summary yet (callers should pass only those ids; it scans events). */
+  modelUsage(ids: string[]): Promise<Record<string, ModelUsage[]>>;
   /**
    * Distinct facet values + session counts. With `dim`, returns just that dimension
    * (optionally prefix-filtered by `q` for type-ahead); without, the top values of every

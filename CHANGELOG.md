@@ -11,6 +11,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.10.0] - 2026-07-06
+
+### Added
+
+- **Skill details & replay** - the skill/command chips on the session page
+  are now clickable: a modal shows the skill's local source file
+  (markdown-rendered; resolved from `~/.claude` skills/commands, the project
+  `.claude`, or the plugin cache) and a Run box that re-executes it on the
+  host via `claude -p "/<name> <args>"`. New API endpoints:
+  `GET /v1/skills/:name` (scope: read) and `POST /v1/skills/:name/run`
+  (scope: admin, no shell, 5-minute timeout).
+
+### Fixed
+
+- **Live tokens & ~$ cost** - running sessions used to show 0 tokens and "-"
+  cost until they ended (usage was only read from the transcript at
+  finalize). The Stop hook now re-reads the transcript each turn and ships
+  only the not-yet-reported per-model delta, so the sessions table and the
+  menu bar tick up live; finalize just tops up the remainder (no double
+  count). Cost for unsummarized sessions is now computed on the fly from
+  per-model `model_use` splits (cache-aware, multi-model - previously live
+  multi-model sessions priced as "-").
+
+---
+
 ## [0.9.0] - 2026-07-05
 
 ### Added

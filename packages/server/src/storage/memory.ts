@@ -19,6 +19,7 @@ import type {
   Lesson,
   SessionFilter,
   SessionStats,
+  ModelUsage,
   LessonFilter,
   Paginated,
   Page,
@@ -214,6 +215,34 @@ export class MemoryStorageAdapter implements StorageAdapter {
         stat.outputTokens += p?.outputTokens || 0;
       }
       out[id] = stat;
+    }
+    return out;
+  }
+
+  async modelUsage(ids: string[]): Promise<Record<string, ModelUsage[]>> {
+    const out: Record<string, ModelUsage[]> = {};
+    for (const id of ids) {
+      const byModel = new Map<string, ModelUsage>();
+      for (const e of this.events.get(id)?.values() ?? []) {
+        if (e.type !== "model_use") continue;
+        const p = e.payload as any;
+        if (!p?.model) continue;
+        const m = byModel.get(p.model) ?? {
+          model: p.model,
+          calls: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 0,
+        };
+        m.calls += p.calls ?? 1;
+        m.inputTokens += p.inputTokens || 0;
+        m.outputTokens += p.outputTokens || 0;
+        m.cacheReadTokens! += p.cacheReadTokens || 0;
+        m.cacheCreationTokens! += p.cacheCreationTokens || 0;
+        byModel.set(p.model, m);
+      }
+      if (byModel.size) out[id] = [...byModel.values()];
     }
     return out;
   }

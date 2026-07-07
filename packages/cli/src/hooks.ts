@@ -39,7 +39,13 @@ function agentInfo(detected: string): { name: string; version?: string } {
   };
 }
 import { cliNarrator, isNestedSummaryRun } from "./narrator.js";
-import { bufferToEvents, transcriptToUsage } from "./transcript.js";
+import {
+  bufferToEvents,
+  transcriptToUsage,
+  usageDelta,
+  usageTotals,
+  type UsageTotals,
+} from "./transcript.js";
 import {
   getProvider,
   type NormalizedHook,
@@ -90,6 +96,7 @@ type State = {
   agentName?: string;
   model?: string; // captured from hooks when the agent reports it on the payload
   assistantTurns?: number;
+  usage?: UsageTotals; // per-model usage already buffered (live delta bookkeeping)
 };
 const readState = (sid: string): State =>
   existsSync(statePath(sid))
@@ -272,6 +279,31 @@ async function flush(
     state.assistantTurns = (state.assistantTurns || 0) + 1;
   }
   if (h.model && !state.model) state.model = h.model;
+
+  // Live usage: re-read the transcript each turn and buffer only the not-yet-reported
+  // delta, so tokens/cost tick up while the conversation is still running instead of
+  // appearing all at once at finalize. state.usage tracks the cumulative already shipped.
+  // ponytail: bufferToEvents' content-dedup can drop a byte-identical delta (tiny, e.g.
+  // two equal haiku side-calls); finalize re-diffs against the buffer and heals the total.
+  if (h.transcriptPath && existsSync(h.transcriptPath)) {
+    try {
+      const cumulative = transcriptToUsage(
+        readFileSync(h.transcriptPath, "utf8"),
+      );
+      const deltas = usageDelta(cumulative, state.usage ?? {});
+      if (deltas.length) {
+        appendFileSync(
+          bufPath(sid),
+          deltas.map((d) => JSON.stringify(d)).join("\n") + "\n",
+        );
+        state.usage = usageTotals(cumulative);
+      }
+    } catch (e) {
+      log(
+        `flush: transcript usage read failed (${e instanceof Error ? e.message : e}) - finalize will catch up.`,
+      );
+    }
+  }
   writeState(sid, state);
 
   await postBuffered(sid, token);
@@ -316,13 +348,29 @@ async function finalizeWorker(
   if (!existsSync(bufPath(sid))) return log(`finalize: no buffer for ${sid}.`);
   const state = readState(sid);
 
-  // Token/model usage: from the transcript when the agent exposes a parseable one; otherwise fall
-  // back to the model the agent reported on hooks, with a call count but no tokens.
+  const lines = readFileSync(bufPath(sid), "utf8")
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
+
+  // Token/model usage: flush already shipped per-turn deltas, so read the transcript one
+  // last time and buffer only the remainder (diffed against what the buffer actually
+  // carries post-dedup - heals any delta the content-dedup dropped mid-session). If nothing
+  // was ever reported, fall back to the model the agent reported on hooks (calls, no tokens).
+  const sent = usageTotals(
+    bufferToEvents(lines)
+      .filter((e) => e.type === "model_use")
+      .map((e) => e.payload as any),
+  );
   let usage =
     h.transcriptPath && existsSync(h.transcriptPath)
-      ? transcriptToUsage(readFileSync(h.transcriptPath, "utf8"))
+      ? usageDelta(
+          transcriptToUsage(readFileSync(h.transcriptPath, "utf8")),
+          sent,
+        )
       : [];
-  if (usage.length === 0 && state.model) {
+  if (usage.length === 0 && Object.keys(sent).length === 0 && state.model) {
     usage = [
       {
         t: Date.now(),
@@ -334,17 +382,13 @@ async function finalizeWorker(
       },
     ];
   }
-  if (usage.length)
+  if (usage.length) {
     appendFileSync(
       bufPath(sid),
       usage.map((r) => JSON.stringify(r)).join("\n") + "\n",
     );
-
-  const lines = readFileSync(bufPath(sid), "utf8")
-    .trim()
-    .split("\n")
-    .filter(Boolean)
-    .map((l) => JSON.parse(l));
+    lines.push(...usage);
+  }
   const start = lines.find((l: any) => l.kind === "start");
   const agentName = state.agentName || provider.agentName;
 

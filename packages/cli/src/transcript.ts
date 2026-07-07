@@ -152,3 +152,80 @@ export function transcriptToUsage(transcriptText: string): BufferLine[] {
   }
   return [...byModel.values()];
 }
+
+/** Per-model running totals already reported to the server (kept in hook state / summed
+ * from the buffer), so each transcript re-read ships only the not-yet-reported remainder. */
+export type UsageTotals = Record<
+  string,
+  {
+    input: number;
+    output: number;
+    cacheRead: number;
+    cacheCreation: number;
+    calls: number;
+  }
+>;
+
+/** Sum per-model usage records (BufferLines or model_use payloads - same field names). */
+export function usageTotals(
+  records: Array<{
+    model?: unknown;
+    inputTokens?: unknown;
+    outputTokens?: unknown;
+    cacheReadTokens?: unknown;
+    cacheCreationTokens?: unknown;
+    calls?: unknown;
+  }>,
+): UsageTotals {
+  const out: UsageTotals = {};
+  for (const r of records) {
+    if (typeof r.model !== "string" || !r.model) continue;
+    const t = (out[r.model] ??= {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheCreation: 0,
+      calls: 0,
+    });
+    t.input += Number(r.inputTokens) || 0;
+    t.output += Number(r.outputTokens) || 0;
+    t.cacheRead += Number(r.cacheReadTokens) || 0;
+    t.cacheCreation += Number(r.cacheCreationTokens) || 0;
+    t.calls += Number(r.calls) || 1;
+  }
+  return out;
+}
+
+/** Cumulative transcript usage minus what was already reported -> delta model records to
+ * buffer now. Empty deltas are dropped; negatives clamp to 0 (a rewritten transcript). */
+export function usageDelta(
+  cumulative: BufferLine[],
+  reported: UsageTotals,
+): BufferLine[] {
+  const out: BufferLine[] = [];
+  for (const c of cumulative) {
+    if (!c.model) continue;
+    const r = reported[c.model] ?? {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheCreation: 0,
+      calls: 0,
+    };
+    const d: BufferLine = {
+      t: c.t ?? Date.now(),
+      kind: "model",
+      model: c.model,
+      inputTokens: Math.max(0, (c.inputTokens ?? 0) - r.input),
+      outputTokens: Math.max(0, (c.outputTokens ?? 0) - r.output),
+      cacheReadTokens: Math.max(0, (c.cacheReadTokens ?? 0) - r.cacheRead),
+      cacheCreationTokens: Math.max(
+        0,
+        (c.cacheCreationTokens ?? 0) - r.cacheCreation,
+      ),
+      calls: Math.max(0, (c.calls ?? 0) - r.calls),
+    };
+    if (d.inputTokens || d.outputTokens || d.calls) out.push(d);
+  }
+  return out;
+}

@@ -47,6 +47,36 @@ describe("SqliteStorageAdapter", () => {
     expect(page.items[0]!.type).toBe("model_use");
   });
 
+  it("aggregates per-model usage from model_use events (live cost path)", async () => {
+    const use = (seq: number, model: string, payload: object): Event =>
+      ({ ...ev(seq), payload: { model, ...payload } }) as Event;
+    await store.appendEvents("s1", [
+      use(0, "claude-fable-5", { inputTokens: 100, outputTokens: 10 }),
+      use(1, "claude-fable-5", {
+        inputTokens: 50,
+        outputTokens: 5,
+        cacheReadTokens: 40,
+        calls: 2,
+      }),
+      use(2, "claude-haiku-4-5", { inputTokens: 7, outputTokens: 3 }),
+      { ...ev(3), type: "message", payload: { role: "user", chars: 1 } },
+    ]);
+    const usage = await store.modelUsage(["s1", "missing"]);
+    expect(usage.missing).toBeUndefined();
+    expect(usage.s1).toHaveLength(2);
+    expect(usage.s1!.find((m) => m.model === "claude-fable-5")).toEqual({
+      model: "claude-fable-5",
+      calls: 3, // 1 (default) + 2
+      inputTokens: 150,
+      outputTokens: 15,
+      cacheReadTokens: 40,
+      cacheCreationTokens: 0,
+    });
+    expect(usage.s1!.find((m) => m.model === "claude-haiku-4-5")).toMatchObject(
+      { inputTokens: 7, outputTokens: 3, calls: 1 },
+    );
+  });
+
   it("lists sessions filtered by user, newest first", async () => {
     await store.createSession({
       ...session("s1"),

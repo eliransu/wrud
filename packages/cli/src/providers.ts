@@ -150,6 +150,8 @@ const claudeCode: ProviderSpec = {
             typeof p.last_assistant_message === "string"
               ? p.last_assistant_message
               : undefined,
+          // every CC hook payload carries transcript_path - flush uses it for live token deltas
+          transcriptPath: p.transcript_path,
         };
       case "SessionEnd":
         return {
