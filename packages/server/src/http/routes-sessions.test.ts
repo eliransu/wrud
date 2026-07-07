@@ -119,6 +119,71 @@ describe("session routes", () => {
     expect(row.tokens).toEqual({ input: 110_000, output: 11_000 });
   });
 
+  it("detail returns a live deterministic summary for an open session", async () => {
+    const created = await app.request("/v1/sessions", {
+      method: "POST",
+      headers: h,
+      body: JSON.stringify({ user: { id: "u1" }, agent: { name: "cc" } }),
+    });
+    const { sessionId } = (await created.json()) as any;
+
+    // no events yet -> still no summary (nothing measured, show nothing)
+    const empty = (await (
+      await app.request(`/v1/sessions/${sessionId}`, { headers: h })
+    ).json()) as any;
+    expect(empty.summary).toBeNull();
+
+    await app.request(`/v1/sessions/${sessionId}/events`, {
+      method: "POST",
+      headers: h,
+      body: JSON.stringify({
+        events: [
+          {
+            id: "m0",
+            sessionId,
+            seq: 0,
+            timestamp: "2026-06-25T10:00:00.000Z",
+            type: "model_use",
+            payload: {
+              model: "claude-fable-5",
+              inputTokens: 39382,
+              outputTokens: 201,
+            },
+          },
+          {
+            id: "e1",
+            sessionId,
+            seq: 1,
+            timestamp: "2026-06-25T10:00:01.000Z",
+            type: "tool_call",
+            payload: { name: "Read", ok: true },
+          },
+        ],
+      }),
+    });
+
+    const read = (await (
+      await app.request(`/v1/sessions/${sessionId}`, { headers: h })
+    ).json()) as any;
+    expect(read.session.status).toBe("open");
+    expect(read.summary).not.toBeNull();
+    expect(read.summary.summarizerVersion).toBe("deterministic@1");
+    expect(read.summary.stats.eventCount).toBe(2);
+    expect(read.summary.stats.models).toEqual([
+      expect.objectContaining({
+        model: "claude-fable-5",
+        inputTokens: 39382,
+        outputTokens: 201,
+      }),
+    ]);
+
+    // live view only: recomputed per read, never persisted, no lessons minted
+    const lessons = (await (
+      await app.request("/v1/lessons", { headers: h })
+    ).json()) as any;
+    expect(lessons.items).toEqual([]);
+  });
+
   it("rejects a bad create body with 400", async () => {
     const res = await app.request("/v1/sessions", {
       method: "POST",

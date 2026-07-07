@@ -1,8 +1,9 @@
-import { useEffect, useState, type CSSProperties } from "react";
-import { Table, Tooltip, message } from "antd";
+import { useState, type CSSProperties } from "react";
+import { Table, Tooltip } from "antd";
 import { useNavigate } from "react-router-dom";
 import { formatApproxUsd } from "@wrud/shared/pricing";
 import { api } from "../api";
+import { useApi, LIVE_POLL_MS } from "../hooks";
 import { PageHeader, StatusTag, Surface } from "../ui";
 import {
   FacetFilterBar,
@@ -23,34 +24,24 @@ const chip: CSSProperties = {
 
 export default function Sessions() {
   const [filters, setFilters] = useState<FilterState>({});
-  const [items, setItems] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
   const nav = useNavigate();
 
-  // server-side pages: (re)load whenever filters or the page window change
-  useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    api
-      .listSessions({
+  // server-side pages: (re)load whenever filters or the page window change,
+  // plus silent live polling so open sessions tick (tokens/cost/events).
+  const { data, loading } = useApi(
+    () =>
+      api.listSessions({
         limit: String(pageSize),
         offset: String((page - 1) * pageSize),
         ...filterToParams(filters),
-      })
-      .then((d) => {
-        if (!alive) return;
-        setItems(d.items ?? []);
-        setTotal(d.total ?? 0);
-      })
-      .catch((e) => message.error(e instanceof Error ? e.message : String(e)))
-      .finally(() => alive && setLoading(false));
-    return () => {
-      alive = false;
-    };
-  }, [filters, page, pageSize]);
+      }),
+    [filters, page, pageSize],
+    { pollMs: LIVE_POLL_MS },
+  );
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
 
   return (
     <>

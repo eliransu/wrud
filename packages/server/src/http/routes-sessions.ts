@@ -15,6 +15,7 @@ import {
   storeSummaryRequestSchema,
   sessionPublicSchema,
   estimateCostUsd,
+  buildBaseSummary,
   newId,
   type Session,
   type SessionSummary,
@@ -194,10 +195,19 @@ sessionRoutes.get("/sessions", requireScope("read"), async (c) => {
 });
 
 sessionRoutes.get("/sessions/:id", requireScope("read"), async (c) => {
-  const { storage } = c.get("deps");
+  const { storage, clock } = c.get("deps");
   const session = await storage.getSession(c.req.param("id"));
   if (!session) throw new AppError(404, "not_found", "session not found");
-  const summary = (await storage.getSummary(session.id)) ?? null;
+  let summary = (await storage.getSummary(session.id)) ?? null;
+  // Open sessions have no stored summary until finalize - compute a live deterministic
+  // view (stats + insights, no narrative) so the detail page ticks while work runs.
+  // Recomputed per read, never persisted, no lessons minted.
+  if (!summary) {
+    const { items: events } = await storage.getEvents(session.id, {
+      limit: SUMMARIZE_FETCH_ALL,
+    });
+    if (events.length > 0) summary = buildBaseSummary(session, events, clock());
+  }
   return c.json({ session: sessionPublicSchema.parse(session), summary }, 200);
 });
 

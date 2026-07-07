@@ -4,7 +4,7 @@ import { Spin, Table, Empty, Tag } from "antd";
 import { WarningOutlined } from "@ant-design/icons";
 import { estimateCostUsd, formatApproxUsd } from "@wrud/shared/pricing";
 import { api } from "../api";
-import { useApi } from "../hooks";
+import { useApi, LIVE_POLL_MS } from "../hooks";
 import { PageHeader, StatTile, StatusTag, Surface } from "../ui";
 import { JsonTree, parseMaybe } from "../JsonTree";
 import { extractSkills } from "../skills";
@@ -119,7 +119,9 @@ export default function SessionDetail() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [openSkill, setOpenSkill] = useState<string | null>(null);
-  const { data, loading } = useApi(() => api.getSession(id), [id]);
+  const { data, loading } = useApi(() => api.getSession(id), [id], {
+    pollMs: LIVE_POLL_MS,
+  });
   // Event log pages server-side, newest first.
   const { data: events } = useApi(
     () =>
@@ -129,12 +131,14 @@ export default function SessionDetail() {
         order: "desc",
       }),
     [id, page, pageSize],
+    { pollMs: LIVE_POLL_MS },
   );
   // Skills scan needs the whole stream, not the visible page.
   // ponytail: caps at the route max (1000 events); move extraction server-side if sessions outgrow it.
   const { data: skillEvents } = useApi(
     () => api.listEvents(id, { limit: "1000" }),
     [id],
+    { pollMs: LIVE_POLL_MS },
   );
   if (loading || !data)
     return <Spin style={{ display: "block", marginTop: 80 }} />;
