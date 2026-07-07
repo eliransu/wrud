@@ -11,6 +11,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.10.1] - 2026-07-07
+
+### Added
+
+- **Context-overhead insight + lesson** - new `context_overhead` analyzer
+  flags the "39k in / 200 out" pattern: input tokens dwarf output because the
+  standing session environment (system prompt, memory files, skill lists, MCP
+  tool schemas, hook output) is re-sent with every model call. The insight
+  explains the ratio and how much input the prompt cache absorbed (0.1x rate);
+  the derived user-scoped lesson recommends disconnecting unused MCP servers
+  and plugins to shrink the baseline. Fires at >=20k avg input tokens/call and
+  a >=25:1 in:out ratio, so real work sessions never flag.
+
+### Fixed
+
+- **Sessions list + session detail now tick live** - 0.10.0 made the Stop hook
+  ship usage every turn and priced open sessions in `GET /v1/sessions`, but the
+  two pages showing that data fetched once on mount and never refreshed, and
+  the detail endpoint returned `summary: null` until finalize (no tokens/cost
+  at all for open sessions). `GET /v1/sessions/:id` now computes a live
+  deterministic summary (stats + insights, no narrative; recomputed per read,
+  never persisted, no lessons minted) when no stored summary exists, and the
+  Sessions table + SessionDetail poll silently at the same 4s cadence Overview
+  already used.
+
+---
+
 ## [0.10.0] - 2026-07-06
 
 ### Added
