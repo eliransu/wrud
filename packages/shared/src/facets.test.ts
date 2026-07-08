@@ -61,6 +61,37 @@ describe("facet extraction", () => {
     ).toEqual([{ dim: "skill", value: "brainstorming" }]);
   });
 
+  it("classifies Task/Agent tool_call into tool + subagent", () => {
+    expect(
+      eventFacets(
+        ev("tool_call", {
+          name: "Task",
+          ok: true,
+          input: '{"description":"scan","subagent_type":"Explore"}',
+        }),
+      ),
+    ).toEqual([
+      { dim: "tool", value: "Task" },
+      { dim: "subagent", value: "Explore" },
+    ]);
+    expect(
+      eventFacets(
+        ev("tool_call", {
+          name: "Agent",
+          ok: true,
+          input: { prompt: "review", subagent_type: "code-reviewer" },
+        }),
+      ),
+    ).toEqual([
+      { dim: "tool", value: "Agent" },
+      { dim: "subagent", value: "code-reviewer" },
+    ]);
+    // no subagent_type -> stays a plain tool facet (a fact, not a guess)
+    expect(eventFacets(ev("tool_call", { name: "Task", ok: true }))).toEqual([
+      { dim: "tool", value: "Task" },
+    ]);
+  });
+
   it("extracts /commands from user messages, normalized lower-case", () => {
     expect(
       eventFacets(

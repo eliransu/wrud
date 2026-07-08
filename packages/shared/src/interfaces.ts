@@ -69,10 +69,14 @@ export interface ReportAggregate {
   trend: { date: string; sessions: number }[];
 }
 
-/** Per-session rollup (token counters + models), for the sessions list. */
+/** Per-session rollup (token counters + facet chips), for the sessions list. */
 export interface SessionStats {
   events: number;
   models: string[];
+  /** Skills + /commands used (skill and command facets merged). */
+  skills: string[];
+  /** Sub-agent types spawned (subagent facets). */
+  subagents: string[];
   inputTokens: number;
   outputTokens: number;
 }

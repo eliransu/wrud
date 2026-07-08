@@ -10,6 +10,38 @@ export interface SkillUsage {
   extensions: string[]; // MCP / external tools (mcp__server__tool)
 }
 
+/** One sub-agent run - a Task/Agent tool call (Claude Code's sub-agent tool). */
+export interface SubagentRun {
+  type: string; // subagent_type ("Explore", "code-reviewer", ...), "agent" when untyped
+  description: string;
+  ok: boolean;
+}
+
+export function extractSubagents(events: any[] | undefined): SubagentRun[] {
+  const out: SubagentRun[] = [];
+  for (const e of events ?? []) {
+    if (e.type !== "tool_call") continue;
+    const name = e.payload?.name ?? "";
+    if (name !== "Task" && name !== "Agent") continue;
+    let input: any = {};
+    try {
+      input =
+        typeof e.payload?.input === "string"
+          ? JSON.parse(e.payload.input)
+          : (e.payload?.input ?? {});
+    } catch {
+      /* input may not be JSON */
+    }
+    const desc = String(input.description || input.prompt || "");
+    out.push({
+      type: String(input.subagent_type || "agent"),
+      description: desc.length > 140 ? desc.slice(0, 140) + "..." : desc,
+      ok: e.payload?.ok !== false,
+    });
+  }
+  return out;
+}
+
 export function extractSkills(events: any[] | undefined): SkillUsage {
   const skills = new Set<string>();
   const extensions = new Set<string>();

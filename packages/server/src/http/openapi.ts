@@ -67,7 +67,7 @@ export function buildOpenApiDoc() {
         get: {
           summary: "List sessions (scope: read)",
           description:
-            "Filterable + paginated (keyset via cursor, or numbered pages via offset). Each facet dim accepts a comma-separated list (OR within a dim, AND across dims): user, agent, model, tool, mcp, skill, command, file_ext, error_kind, status. Plus from/to (ISO, createdAt range), minInputTokens, minOutputTokens, hasError, limit, cursor, offset. `total` counts all rows matching the filter.",
+            "Filterable + paginated (keyset via cursor, or numbered pages via offset). Each facet dim accepts a comma-separated list (OR within a dim, AND across dims): user, agent, model, tool, mcp, skill, command, subagent, file_ext, error_kind, status. Plus from/to (ISO, createdAt range), minInputTokens, minOutputTokens, hasError, limit, cursor, offset. `total` counts all rows matching the filter.",
           responses: {
             "200": {
               description: "paginated sessions",

@@ -26,6 +26,7 @@ export const FACET_DIMS = [
   "mcp", // mcp__server__tool calls (extensions)
   "skill", // the Skill tool's input.skill
   "command", // /slash-commands typed by the user
+  "subagent", // sub-agent type from Task/Agent tool calls (input.subagent_type)
   "file_ext", // extension of a changed file
   "error_kind", // error.kind (or "error" when unspecified)
 ] as const;
@@ -67,8 +68,19 @@ export function eventFacets(e: Event): Facet[] {
       if (!name) return [];
       if (name.startsWith("mcp__")) return [{ dim: "mcp", value: name }];
       if (name === "Skill") {
-        const s = skillArg(p.input);
+        const s = inputField(p.input, "skill");
         return s ? [{ dim: "skill", value: s }] : [];
+      }
+      if (name === "Task" || name === "Agent") {
+        // Claude Code's sub-agent tool ("Task", newer builds "Agent"). Stays a tool facet
+        // too; the subagent dim adds the spawned agent type when the input carries it.
+        const t = inputField(p.input, "subagent_type");
+        return t
+          ? [
+              { dim: "tool", value: name },
+              { dim: "subagent", value: t },
+            ]
+          : [{ dim: "tool", value: name }];
       }
       return [{ dim: "tool", value: name }];
     }
@@ -95,15 +107,15 @@ export function eventTokens(e: Event): { input: number; output: number } {
   return { input: p.inputTokens || 0, output: p.outputTokens || 0 };
 }
 
-/** The Skill tool's input may be a JSON string or an object; pull `.skill`. */
-function skillArg(input: unknown): string {
+/** Tool input may be a JSON string or an object; pull one string field from it. */
+export function inputField(input: unknown, key: string): string {
   try {
     const o = typeof input === "string" ? JSON.parse(input) : input;
-    const s =
-      o && typeof o === "object" ? (o as { skill?: unknown }).skill : "";
-    return s ? String(s) : "";
+    const v =
+      o && typeof o === "object" ? (o as Record<string, unknown>)[key] : "";
+    return v ? String(v) : "";
   } catch {
-    return ""; // input not JSON - no skill to extract
+    return ""; // input not JSON - nothing to extract
   }
 }
 

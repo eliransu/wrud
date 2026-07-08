@@ -203,16 +203,25 @@ export class MemoryStorageAdapter implements StorageAdapter {
       const stat: SessionStats = {
         events: evs.length,
         models: [],
+        skills: [],
+        subagents: [],
         inputTokens: 0,
         outputTokens: 0,
       };
+      const push = (list: string[], v: string) => {
+        if (!list.includes(v)) list.push(v);
+      };
       for (const e of evs) {
-        if (e.type !== "model_use") continue;
-        const p = e.payload as any;
-        if (p?.model && !stat.models.includes(p.model))
-          stat.models.push(p.model);
-        stat.inputTokens += p?.inputTokens || 0;
-        stat.outputTokens += p?.outputTokens || 0;
+        const t = eventTokens(e);
+        stat.inputTokens += t.input;
+        stat.outputTokens += t.output;
+        // skills = skill + command dims merged, same as the SQLite adapter
+        for (const f of eventFacets(e)) {
+          if (f.dim === "model") push(stat.models, f.value);
+          else if (f.dim === "subagent") push(stat.subagents, f.value);
+          else if (f.dim === "skill" || f.dim === "command")
+            push(stat.skills, f.value);
+        }
       }
       out[id] = stat;
     }

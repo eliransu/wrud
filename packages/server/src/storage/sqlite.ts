@@ -49,6 +49,39 @@ export class SqliteStorageAdapter implements StorageAdapter {
     this.ensureColumns(); // add rollup columns to DBs created before this feature
     this.backfillFacets(); // populate the facet index for pre-existing sessions, once
     this.backfillProjectFacets(); // add the `project` dim to DBs indexed before it existed
+    this.backfillSubagentFacets(); // add the `subagent` dim to DBs indexed before it existed
+  }
+
+  /** One-time: DBs whose facet index predates the `subagent` dim derive it from stored
+   * Task/Agent tool_call events. Same re-run property as backfillProjectFacets when a DB
+   * genuinely has none; the LIKE prefilter keeps that startup scan cheap. */
+  private backfillSubagentFacets() {
+    const n = (
+      this.db
+        .prepare(`SELECT COUNT(*) n FROM session_facets WHERE dim = 'subagent'`)
+        .get() as any
+    ).n;
+    if (n > 0) return;
+    const rows = this.db
+      .prepare(
+        `SELECT session_id, type, payload_json FROM events
+         WHERE type = 'tool_call' AND (payload_json LIKE '%"name":"Task"%' OR payload_json LIKE '%"name":"Agent"%')`,
+      )
+      .all() as any[];
+    if (!rows.length) return;
+    const tx = this.db.transaction(() => {
+      for (const r of rows) {
+        const e = {
+          type: r.type,
+          payload: JSON.parse(r.payload_json),
+        } as Event;
+        this.insertFacets(
+          r.session_id,
+          eventFacets(e).filter((f) => f.dim === "subagent"),
+        );
+      }
+    });
+    tx();
   }
 
   /** One-time: DBs whose facet index predates the `project` dim get it derived from cwd. */
@@ -283,7 +316,14 @@ export class SqliteStorageAdapter implements StorageAdapter {
     const out: Record<string, SessionStats> = {};
     if (!ids.length) return out;
     for (const id of ids)
-      out[id] = { events: 0, models: [], inputTokens: 0, outputTokens: 0 };
+      out[id] = {
+        events: 0,
+        models: [],
+        skills: [],
+        subagents: [],
+        inputTokens: 0,
+        outputTokens: 0,
+      };
     const ph = ids.map(() => "?").join(",");
     // Counters live on the row (maintained in appendEvents) - no event scan.
     for (const r of this.db
@@ -297,13 +337,19 @@ export class SqliteStorageAdapter implements StorageAdapter {
       s.inputTokens = r.input_tokens;
       s.outputTokens = r.output_tokens;
     }
-    // Models come from the facet index.
+    // Chip lists come from the facet index (skills = skill + command dims merged).
     for (const r of this.db
       .prepare(
-        `SELECT session_id, value FROM session_facets WHERE dim = 'model' AND session_id IN (${ph})`,
+        `SELECT session_id, dim, value FROM session_facets
+         WHERE dim IN ('model','skill','command','subagent') AND session_id IN (${ph})`,
       )
-      .all(...ids) as any[])
-      out[r.session_id]?.models.push(r.value);
+      .all(...ids) as any[]) {
+      const s = out[r.session_id];
+      if (!s) continue;
+      if (r.dim === "model") s.models.push(r.value);
+      else if (r.dim === "subagent") s.subagents.push(r.value);
+      else s.skills.push(r.value);
+    }
     return out;
   }
 

@@ -7,7 +7,7 @@ import { api } from "../api";
 import { useApi, LIVE_POLL_MS } from "../hooks";
 import { PageHeader, StatTile, StatusTag, Surface } from "../ui";
 import { JsonTree, parseMaybe } from "../JsonTree";
-import { extractSkills } from "../skills";
+import { extractSkills, extractSubagents } from "../skills";
 import SkillModal from "../SkillModal";
 
 // Per-event-type presentation for the event log.
@@ -225,6 +225,49 @@ export default function SessionDetail() {
       {openSkill && (
         <SkillModal name={openSkill} onClose={() => setOpenSkill(null)} />
       )}
+
+      {(() => {
+        // Sub-agent runs (Claude Code Task/Agent tool calls) belong under their session.
+        const runs = extractSubagents(skillEvents?.items);
+        if (runs.length === 0) return null;
+        return (
+          <Surface
+            title={`Sub-agents (${runs.length})`}
+            style={{ marginTop: 16 }}
+            delay={50}
+          >
+            <div style={{ display: "grid", gap: 8 }}>
+              {runs.map((r, i) => (
+                <div
+                  key={i}
+                  style={{ display: "flex", gap: 10, alignItems: "baseline" }}
+                >
+                  <span
+                    className="wd-mono"
+                    style={{
+                      fontSize: 12,
+                      padding: "3px 10px",
+                      borderRadius: 8,
+                      border: "1px solid #7aa2ff55",
+                      background: "#7aa2ff14",
+                      color: "#7aa2ff",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {r.type}
+                  </span>
+                  <span style={{ fontSize: 13, color: "var(--ink)" }}>
+                    {r.description || (
+                      <span style={{ color: "var(--muted)" }}>-</span>
+                    )}
+                  </span>
+                  {!r.ok && <Tag color="red">failed</Tag>}
+                </div>
+              ))}
+            </div>
+          </Surface>
+        );
+      })()}
 
       {summary ? (
         <>

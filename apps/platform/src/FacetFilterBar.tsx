@@ -15,6 +15,7 @@ export const DIMS = [
   ["category", "Categories"],
   ["skill", "Skills"],
   ["command", "Commands"],
+  ["subagent", "Sub-agents"],
   ["tool", "Tools"],
   ["mcp", "MCPs"],
   ["file_ext", "Files (ext)"],

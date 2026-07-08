@@ -172,6 +172,8 @@ sessionRoutes.get("/sessions", requireScope("read"), async (c) => {
     const st = stats[s.id] ?? {
       events: 0,
       models: [],
+      skills: [],
+      subagents: [],
       inputTokens: 0,
       outputTokens: 0,
     };
@@ -182,6 +184,8 @@ sessionRoutes.get("/sessions", requireScope("read"), async (c) => {
     return {
       ...sessionPublicSchema.parse(s),
       models: st.models,
+      skills: st.skills,
+      subagents: st.subagents,
       tokens: { input: st.inputTokens, output: st.outputTokens },
       events: st.events,
       estCostUsd,
