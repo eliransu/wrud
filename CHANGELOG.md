@@ -11,6 +11,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.11.0] - 2026-07-08
+
+### Added
+
+- **Sessions table columns picker** - a "Columns" button on the Sessions page
+  lets you add hidden-by-default columns (Skills, Sub-agents, Project, Topic,
+  Category) or drop default ones; the chosen set persists per browser.
+- **Skills + sub-agents on the sessions list** - `GET /v1/sessions` rows now
+  carry `skills` (Skill-tool uses + /slash-commands) and `subagents` chip
+  lists, served from the existing facet index (no event scans).
+- **Sub-agents under their session** - new `subagent` facet dim indexes
+  Claude Code `Task`/`Agent` tool calls by their `subagent_type`: filterable
+  (`?subagent=Explore`), included in Reports dimensions, and derived once for
+  existing DBs via a startup backfill. The session detail page shows a
+  Sub-agents section - agent type chip, description, and a `failed` tag when
+  the run errored.
+
+---
+
 ## [0.10.1] - 2026-07-07
 
 ### Added
